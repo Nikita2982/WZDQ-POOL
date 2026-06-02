@@ -1,0 +1,42 @@
+.DS_Store
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Telegram / local runtime state
+.sessions/
+logs/
+exports/
+
+# Databases and generated app data
+*.db
+*.sqlite
+*.sqlite3
+
+# Python caches and virtualenvs
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.python-version
+.venv/
+.venv311/
+.venv39/
+venv/
+env/
+
+# IDE / editor files
+.idea/
+.vscode/
+
+# OS / build leftovers
+*.log
+*.tmp
+*.swp

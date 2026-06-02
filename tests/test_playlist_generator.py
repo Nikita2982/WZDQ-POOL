@@ -1,0 +1,29 @@
+from dataclasses import dataclass
+
+from bot.services.playlist_generator import generate_dj_playlist
+
+
+@dataclass
+class StubTrack:
+    id: int
+    genre: str
+    artist: str
+    title: str
+    duration_sec: int
+    bpm: float
+    camelot_key: str
+    energy_level: float
+    is_suitable: bool = True
+
+
+def test_generate_dj_playlist_returns_sorted_mixable_tracks():
+    tracks = [
+        StubTrack(1, "afro_house", "A", "One", 360, 118, "8A", 0.40),
+        StubTrack(2, "afro_house", "B", "Two", 350, 119, "9A", 0.48),
+        StubTrack(3, "afro_house", "C", "Three", 380, 121, "10A", 0.57),
+    ]
+
+    result = generate_dj_playlist(tracks, target_duration_minutes=12, mood="warm-up")
+
+    assert len(result.tracks) >= 2
+    assert result.tracks[0].bpm <= result.tracks[-1].bpm
