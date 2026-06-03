@@ -8,6 +8,13 @@ SECTION_META = {
     "dance_pop": "💿 Dance / Pop",
 }
 
+SECTION_LOADING_META = {
+    "electronic": "ELECTRONIC",
+    "house": "HOUSE",
+    "rap": "RAP",
+    "dance_pop": "DANCE / POP",
+}
+
 RAP_BPM_META = {
     "low_double": "70-76 / 140-152",
     "mid_low": "95-103",

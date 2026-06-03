@@ -16,7 +16,7 @@ Telegram-бот для DJ, который сканирует аудио из Tel
 1. Админ запускает `/scan_channel`.
 2. `Telethon` проходит по сообщениям с аудио в источнике.
 3. Система определяет жанр по `#hashtags`, topic id или fallback mapping.
-4. Аудио временно скачивается в `/tmp/dj_ai_bot`.
+4. Аудио временно скачивается в `/tmp/dj_ai_bot` или загружается во внешнее object storage.
 5. Анализатор считает BPM, key, Camelot, energy.
 6. Результат сохраняется в `tracks`.
 7. Пользователь в боте выбирает жанр, длительность, настроение.
@@ -75,6 +75,8 @@ Telegram-бот для DJ, который сканирует аудио из Tel
 - `is_suitable`
 - `suitability_score`
 - `analysis_notes`
+- `storage_bucket`
+- `storage_key`
 
 ## Модули проекта
 
@@ -150,6 +152,40 @@ python main.py
 ## Пример `.env`
 
 См. [`.env.example`](/Users/admin/Documents/DJ_AI_BOT/.env.example).
+
+## Внешнее хранилище треков
+
+Чтобы аудио после сканирования не копилось на локальном ПК, можно включить S3-compatible storage:
+
+- `STORAGE_ENABLED=true`
+- `STORAGE_ENDPOINT_URL=...`
+- `STORAGE_ACCESS_KEY_ID=...`
+- `STORAGE_SECRET_ACCESS_KEY=...`
+- `STORAGE_BUCKET=...`
+- `STORAGE_REGION=...`
+- `STORAGE_PREFIX=tracks`
+
+После этого сканер:
+
+1. скачивает трек временно;
+2. анализирует BPM/key;
+3. загружает файл в object storage;
+4. сохраняет `storage_bucket` и `storage_key` в БД;
+5. удаляет локальную копию.
+
+При генерации плейлиста бот сначала пытается взять файл из storage, и только для старых треков без storage fallback'ится на Telegram.
+
+Чтобы догрузить в облако уже просканированные треки и удалить локальные копии, запусти:
+
+```bash
+venv/bin/python scripts/backfill_storage.py
+```
+
+Можно ограничить пробный прогон, например первыми 20 треками:
+
+```bash
+venv/bin/python scripts/backfill_storage.py 20
+```
 
 ## Docker
 

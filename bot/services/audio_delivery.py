@@ -10,6 +10,7 @@ from aiogram.types import BufferedInputFile
 from telethon import TelegramClient
 
 from config.settings import get_settings
+from storage import ObjectStorageService
 
 
 SECTION_ORDER = ["electronic", "house", "rap", "dance_pop"]
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 class AudioDeliveryService:
     def __init__(self) -> None:
         self.settings = get_settings()
+        self.storage = ObjectStorageService()
 
     async def send_tracks(self, bot: Bot, chat_id: int, tracks: list, *, should_cancel=None) -> tuple[int, bool]:
         sent_count = 0
@@ -42,25 +44,29 @@ class AudioDeliveryService:
                             track.telegram_message_id,
                         )
                         continue
-                    cached_result = self._get_cached_track_file(track)
+                    storage_bytes = self._get_storage_track_bytes(track)
+                    cached_result = None if storage_bytes is not None else self._get_cached_track_file(track)
                     from_cache = cached_result is not None
-                    download_result = cached_result or await self._download_track_file(
+                    download_result = None if storage_bytes else cached_result or await self._download_track_file(
                         client,
                         message,
                         track,
                     )
-                    if download_result is None:
+                    if storage_bytes is None and download_result is None:
                         logger.warning(
                             "Track file could not be downloaded for delivery: message_id=%s",
                             track.telegram_message_id,
                         )
                         continue
-                    temp_path, original_filename = download_result
+                    temp_path = None
+                    original_filename = self._original_filename(track, track.telegram_message_id, message.file.name)
+                    if download_result is not None:
+                        temp_path, original_filename = download_result
                     try:
                         if should_cancel and should_cancel():
                             cancelled = True
                             break
-                        audio_bytes = Path(temp_path).read_bytes()
+                        audio_bytes = storage_bytes if storage_bytes is not None else Path(temp_path).read_bytes()
                         thumbnail = await self._build_thumbnail_input(client, message, track.telegram_message_id)
                         await bot.send_audio(
                             chat_id=chat_id,
@@ -79,7 +85,7 @@ class AudioDeliveryService:
                         )
                         continue
                     finally:
-                        if not from_cache:
+                        if temp_path and not from_cache:
                             Path(temp_path).unlink(missing_ok=True)
         finally:
             self._cleanup_runtime_delivery_session(session_path)
@@ -136,6 +142,12 @@ class AudioDeliveryService:
                 original_filename = self._original_filename(track, message_id, path.name)
                 return path.as_posix(), original_filename
         return None
+
+    def _get_storage_track_bytes(self, track) -> bytes | None:
+        storage_key = getattr(track, "storage_key", None)
+        if not storage_key:
+            return None
+        return self.storage.download_track_bytes(storage_key=storage_key)
 
     async def _build_thumbnail_input(self, client: TelegramClient, message, message_id: int) -> BufferedInputFile | None:
         try:

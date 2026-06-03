@@ -87,6 +87,16 @@ def extract_section_header_genre_from_text(
     return None
 
 
+def extract_section_header_tag(text: str | None) -> str | None:
+    if not text:
+        return None
+    normalized = text.strip().lower()
+    match = re.fullmatch(r"#([a-z0-9_]+)", normalized)
+    if not match:
+        return None
+    return match.group(1)
+
+
 def build_message_link(chat_username: str | None, message_id: int) -> str | None:
     if not chat_username:
         return None

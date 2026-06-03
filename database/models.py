@@ -35,6 +35,8 @@ class Track(Base):
     is_suitable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     suitability_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     analysis_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    storage_bucket: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    storage_key: Mapped[str | None] = mapped_column(String(1024), nullable=True, index=True)
     raw_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

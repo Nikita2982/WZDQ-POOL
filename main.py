@@ -11,6 +11,7 @@ from bot.handlers.admin import router as admin_router
 from bot.handlers.user import router as user_router
 from config.settings import get_settings
 from database.db import close_db, init_db
+from scanner.scan_tracks import ChannelLiveMonitor
 from subscription import SubscriptionRequiredMiddleware
 
 
@@ -30,10 +31,18 @@ async def run_bot() -> None:
     await bot.set_my_commands(
         [
             BotCommand(command="start", description="Открыть бота"),
-            BotCommand(command="playlist", description="Собери плэйлист"),
         ]
     )
-    await dispatcher.start_polling(bot)
+    live_monitor_task = asyncio.create_task(run_live_monitor())
+    try:
+        await dispatcher.start_polling(bot)
+    finally:
+        live_monitor_task.cancel()
+        await asyncio.gather(live_monitor_task, return_exceptions=True)
+
+
+async def run_live_monitor() -> None:
+    await ChannelLiveMonitor().run()
 
 
 async def run_api() -> None:

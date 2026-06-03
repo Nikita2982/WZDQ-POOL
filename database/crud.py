@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from sqlalchemy import Select, func, not_, select
+from sqlalchemy import Select, func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import ScanJob, Track
@@ -120,6 +120,18 @@ async def get_genre_stats(session: AsyncSession) -> dict[str, int]:
 
 async def list_tracks(session: AsyncSession, limit: int = 100) -> list[Track]:
     result = await session.execute(select(Track).order_by(Track.created_at.desc()).limit(limit))
+    return list(result.scalars().all())
+
+
+async def list_tracks_missing_storage(session: AsyncSession, limit: int | None = None) -> list[Track]:
+    stmt = (
+        select(Track)
+        .where(or_(Track.storage_key.is_(None), Track.storage_key == ""))
+        .order_by(Track.telegram_message_id.asc())
+    )
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    result = await session.execute(stmt)
     return list(result.scalars().all())
 
 

@@ -15,6 +15,7 @@ from bot.keyboards.menu import (
     post_generation_keyboard,
     post_generation_keyboard_with_bpm,
     RAP_BPM_META,
+    SECTION_LOADING_META,
     rap_bpm_keyboard,
     section_keyboard,
     stop_generation_keyboard,
@@ -201,8 +202,9 @@ async def stop_generation_handler(callback: CallbackQuery) -> None:
     job = ACTIVE_GENERATIONS.get(job_id)
     if job is not None:
         job.cancelled = True
-        await callback.message.edit_text(
-            "Генерация остановлена ⏹",
+        await callback.message.edit_text("Генерация остановлена ⏹")
+        await callback.message.answer(
+            "Выбери следующий шаг",
             reply_markup=genre_entry_keyboard(),
         )
         await callback.answer("Останавливаю генерацию")
@@ -223,15 +225,16 @@ async def _run_playlist_generation(
 ) -> None:
     job_id = uuid.uuid4().hex
     ACTIVE_GENERATIONS[job_id] = ActiveGeneration(chat_id=chat_id)
+    genre_label = SECTION_LOADING_META.get(genre, genre.replace("_", " ").upper())
     if genre == "rap" and bpm_bucket:
         bucket_label = RAP_BPM_META.get(bpm_bucket, bpm_bucket)
         loading_message = await message.answer(
-            f"Плэйлист генерируется ⏳\nBPM-кластер: {bucket_label}",
+            f"Плэйлист {genre_label} генерируется ⏳\nBPM-кластер: {bucket_label}",
             reply_markup=stop_generation_keyboard(job_id),
         )
     else:
         loading_message = await message.answer(
-            "Плэйлист генерируется ⏳",
+            f"Плэйлист {genre_label} генерируется ⏳",
             reply_markup=stop_generation_keyboard(job_id),
         )
 
