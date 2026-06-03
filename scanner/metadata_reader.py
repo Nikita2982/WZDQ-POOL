@@ -23,16 +23,17 @@ GENRE_ALIAS_MAP = {
     "bass": "house",
     "afro": "house",
     "house_remixes": "house",
+    "disco": "house",
 }
 
 IGNORED_SECTION_TAGS = {
     "acapella",
     "samples",
     "scratch",
-    "disco",
     "en_intro",
     "tools",
     "beatport_top_10",
+    "billboard_top_10",
     "soundcloud_reels",
 }
 
