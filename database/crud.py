@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from sqlalchemy import Select, func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import ScanJob, Track
+from database.models import ScanJob, Track, UsageEvent
 
 
 async def create_scan_job(session: AsyncSession, source_chat: str) -> ScanJob:
@@ -163,3 +164,75 @@ async def fix_track_mix_data(
     await session.commit()
     await session.refresh(track)
     return track
+
+
+async def create_usage_event(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    username: str | None,
+    first_name: str | None,
+    event_type: str,
+    genre: str | None = None,
+    bpm_bucket: str | None = None,
+    duration: int | None = None,
+) -> UsageEvent:
+    event = UsageEvent(
+        user_id=user_id,
+        username=username,
+        first_name=first_name,
+        event_type=event_type,
+        genre=genre,
+        bpm_bucket=bpm_bucket,
+        duration=duration,
+    )
+    session.add(event)
+    await session.commit()
+    await session.refresh(event)
+    return event
+
+
+async def get_usage_summary(session: AsyncSession) -> SimpleNamespace:
+    total_events = (
+        await session.execute(select(func.count(UsageEvent.id)))
+    ).scalar_one()
+    unique_users = (
+        await session.execute(select(func.count(func.distinct(UsageEvent.user_id))))
+    ).scalar_one()
+    completed_generations = (
+        await session.execute(
+            select(func.count(UsageEvent.id)).where(UsageEvent.event_type == "generation_completed")
+        )
+    ).scalar_one()
+    top_users_result = await session.execute(
+        select(
+            UsageEvent.user_id,
+            func.max(UsageEvent.username).label("username"),
+            func.max(UsageEvent.first_name).label("first_name"),
+            func.count(UsageEvent.id).label("completed_count"),
+        )
+        .where(UsageEvent.event_type == "generation_completed")
+        .group_by(UsageEvent.user_id)
+        .order_by(func.count(UsageEvent.id).desc(), UsageEvent.user_id.asc())
+        .limit(5)
+    )
+    top_genres_result = await session.execute(
+        select(
+            UsageEvent.genre,
+            func.count(UsageEvent.id).label("completed_count"),
+        )
+        .where(
+            UsageEvent.event_type == "generation_completed",
+            UsageEvent.genre.is_not(None),
+        )
+        .group_by(UsageEvent.genre)
+        .order_by(func.count(UsageEvent.id).desc(), UsageEvent.genre.asc())
+        .limit(5)
+    )
+    return SimpleNamespace(
+        total_events=total_events,
+        unique_users=unique_users,
+        completed_generations=completed_generations,
+        top_users=top_users_result.all(),
+        top_genres=top_genres_result.all(),
+    )

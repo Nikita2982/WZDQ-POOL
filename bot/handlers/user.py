@@ -23,7 +23,7 @@ from bot.keyboards.menu import (
 from bot.services.audio_delivery import AudioDeliveryService, SECTION_ORDER
 from bot.services.playlist_generator import generate_dj_playlist
 from config.settings import get_settings
-from database.crud import get_genre_stats, get_tracks_for_genre
+from database.crud import create_usage_event, get_genre_stats, get_tracks_for_genre
 from database.db import SessionLocal
 from subscription import CHECK_SUBSCRIPTION_CALLBACK, require_subscription
 
@@ -57,6 +57,7 @@ class PlaylistStates(StatesGroup):
 
 @router.message(CommandStart())
 async def start_handler(message: Message, state: FSMContext) -> None:
+    await _log_usage_event(message.from_user, event_type="start")
     await show_playlist_entrypoint(message, state)
 
 
@@ -115,6 +116,7 @@ async def genre_entry_handler(callback: CallbackQuery, state: FSMContext) -> Non
 async def genre_handler(callback: CallbackQuery, state: FSMContext) -> None:
     genre = callback.data.split(":", maxsplit=1)[1]
     await state.update_data(genre=genre)
+    await _log_usage_event(callback.from_user, event_type="genre_selected", genre=genre)
     if genre == "rap":
         await state.set_state(PlaylistStates.bpm_bucket)
         await callback.message.edit_text(
@@ -135,6 +137,13 @@ async def genre_handler(callback: CallbackQuery, state: FSMContext) -> None:
 async def rap_bpm_handler(callback: CallbackQuery, state: FSMContext) -> None:
     bpm_bucket = callback.data.split(":", maxsplit=1)[1]
     await state.update_data(bpm_bucket=bpm_bucket)
+    data = await state.get_data()
+    await _log_usage_event(
+        callback.from_user,
+        event_type="bpm_bucket_selected",
+        genre=data.get("genre"),
+        bpm_bucket=bpm_bucket,
+    )
     await state.set_state(PlaylistStates.duration)
     await callback.message.edit_text(
         "⏱ Выбери тайминг",
@@ -161,6 +170,13 @@ async def duration_handler(callback: CallbackQuery, state: FSMContext) -> None:
         await state.clear()
         return
     bpm_bucket = data.get("bpm_bucket")
+    await _log_usage_event(
+        callback.from_user,
+        event_type="duration_selected",
+        genre=genre,
+        bpm_bucket=bpm_bucket,
+        duration=duration,
+    )
 
     await callback.answer()
     await callback.message.delete()
@@ -170,6 +186,7 @@ async def duration_handler(callback: CallbackQuery, state: FSMContext) -> None:
         callback.message.chat.id,
         genre,
         duration,
+        actor=callback.from_user,
         bpm_bucket=bpm_bucket,
     )
     await state.clear()
@@ -181,6 +198,13 @@ async def repeat_generation_handler(callback: CallbackQuery, state: FSMContext) 
     duration = int(duration_raw)
     bpm_bucket = rest[0] if rest else None
     previous_generation = RECENT_GENERATIONS.get(callback.message.chat.id)
+    await _log_usage_event(
+        callback.from_user,
+        event_type="generation_repeated",
+        genre=genre,
+        bpm_bucket=bpm_bucket,
+        duration=duration,
+    )
     await callback.answer()
     await callback.message.delete()
     await _run_playlist_generation(
@@ -189,6 +213,7 @@ async def repeat_generation_handler(callback: CallbackQuery, state: FSMContext) 
         callback.message.chat.id,
         genre,
         duration,
+        actor=callback.from_user,
         bpm_bucket=bpm_bucket,
         excluded_track_ids=_repeated_track_ids(previous_generation, genre, duration, bpm_bucket),
         previous_track_count=len(previous_generation.track_ids) if previous_generation else None,
@@ -202,6 +227,7 @@ async def stop_generation_handler(callback: CallbackQuery) -> None:
     job = ACTIVE_GENERATIONS.get(job_id)
     if job is not None:
         job.cancelled = True
+        await _log_usage_event(callback.from_user, event_type="generation_stopped")
         await callback.message.edit_text("Генерация остановлена ⏹")
         await callback.message.answer(
             "Выбери следующий шаг",
@@ -219,12 +245,20 @@ async def _run_playlist_generation(
     genre: str,
     duration: int,
     *,
+    actor=None,
     bpm_bucket: str | None = None,
     excluded_track_ids: set[int] | None = None,
     previous_track_count: int | None = None,
 ) -> None:
     job_id = uuid.uuid4().hex
     ACTIVE_GENERATIONS[job_id] = ActiveGeneration(chat_id=chat_id)
+    await _log_usage_event(
+        actor,
+        event_type="generation_started",
+        genre=genre,
+        bpm_bucket=bpm_bucket,
+        duration=duration,
+    )
     genre_label = SECTION_LOADING_META.get(genre, genre.replace("_", " ").upper())
     if genre == "rap" and bpm_bucket:
         bucket_label = RAP_BPM_META.get(bpm_bucket, bpm_bucket)
@@ -260,6 +294,13 @@ async def _run_playlist_generation(
                 duration=duration,
                 bpm_bucket=bpm_bucket,
                 track_ids=[track.id for track in result.tracks if getattr(track, "id", None) is not None],
+            )
+            await _log_usage_event(
+                actor,
+                event_type="generation_completed",
+                genre=genre,
+                bpm_bucket=bpm_bucket,
+                duration=duration,
             )
             completion_text = (
                 "Генерация завершена ✅\n"
@@ -319,3 +360,29 @@ def _repeated_track_ids(
     if previous_generation.bpm_bucket != bpm_bucket:
         return set()
     return set(previous_generation.track_ids)
+
+
+async def _log_usage_event(
+    user,
+    *,
+    event_type: str,
+    genre: str | None = None,
+    bpm_bucket: str | None = None,
+    duration: int | None = None,
+) -> None:
+    if user is None:
+        return
+    try:
+        async with SessionLocal() as session:
+            await create_usage_event(
+                session,
+                user_id=user.id,
+                username=getattr(user, "username", None),
+                first_name=getattr(user, "first_name", None),
+                event_type=event_type,
+                genre=genre,
+                bpm_bucket=bpm_bucket,
+                duration=duration,
+            )
+    except Exception:
+        return

@@ -34,7 +34,7 @@ class ScanSummary:
 
 @dataclass(slots=True)
 class GenreSection:
-    genre: str
+    genre: str | None
     header_message_id: int
     start_index: int
     end_index: int
@@ -94,6 +94,8 @@ class ChannelScanner:
                     sections = self._build_sections(messages)
 
                     for section in sections:
+                        if not section.genre:
+                            continue
                         section_messages = messages[section.start_index + 1 : section.end_index]
                         for message in section_messages:
                             if not self._is_audio_message(message):
@@ -235,15 +237,18 @@ class ChannelScanner:
         Path(f"{session_path}-journal").unlink(missing_ok=True)
 
     def _build_sections(self, messages: list[Message]) -> list[GenreSection]:
-        headers: list[tuple[int, str, int]] = []
+        headers: list[tuple[int, str | None, int]] = []
         for index, message in enumerate(messages):
+            text = message.message or ""
+            raw_tag = extract_section_header_tag(text)
+            if raw_tag is None:
+                continue
             genre = extract_section_header_genre_from_text(
-                message.message or "",
+                text,
                 supported_genres=self.settings.supported_genres,
                 hashtag_prefix=self.settings.genre_hashtag_prefix,
             )
-            if genre:
-                headers.append((index, genre, message.id))
+            headers.append((index, genre, message.id))
 
         sections: list[GenreSection] = []
         for idx, (start_index, genre, header_message_id) in enumerate(headers):

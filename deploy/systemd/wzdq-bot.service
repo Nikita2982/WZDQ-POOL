@@ -1,0 +1,15 @@
+[Unit]
+Description=WZDQ Pool Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/WZDQ-POOL
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/opt/WZDQ-POOL/venv/bin/python main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

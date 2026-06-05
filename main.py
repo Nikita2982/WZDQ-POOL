@@ -3,7 +3,8 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from aiogram.types import BotCommand
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import BotCommand, BotCommandScopeChat
 from uvicorn import Config, Server
 
 from api.app import create_app
@@ -33,6 +34,24 @@ async def run_bot() -> None:
             BotCommand(command="start", description="Открыть бота"),
         ]
     )
+    for admin_user_id in settings.admin_user_ids:
+        try:
+            await bot.set_my_commands(
+                [
+                    BotCommand(command="start", description="Открыть бота"),
+                    BotCommand(command="admin_stats", description="Статистика использования"),
+                    BotCommand(command="stats", description="Статистика треков"),
+                    BotCommand(command="scan_channel", description="Сканировать канал"),
+                    BotCommand(command="mark_unsuitable", description="Скрыть трек из выдачи"),
+                    BotCommand(command="fix_track", description="Исправить BPM и key"),
+                ],
+                scope=BotCommandScopeChat(chat_id=admin_user_id),
+            )
+        except TelegramBadRequest:
+            logging.warning(
+                "Skipped scoped admin commands for chat_id=%s because chat is not available yet",
+                admin_user_id,
+            )
     live_monitor_task = asyncio.create_task(run_live_monitor())
     try:
         await dispatcher.start_polling(bot)

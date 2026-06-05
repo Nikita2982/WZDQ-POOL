@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from config.settings import get_settings
-from database.crud import fix_track_mix_data, get_genre_stats, mark_track_unsuitable
+from database.crud import fix_track_mix_data, get_genre_stats, get_usage_summary, mark_track_unsuitable
 from database.db import SessionLocal
 from scanner.scan_tracks import ChannelScanner
 
@@ -83,3 +83,30 @@ async def fix_track_handler(message: Message) -> None:
             musical_key=musical_key,
         )
     await message.answer("Mix-данные обновлены." if track else "Трек не найден.")
+
+
+@router.message(Command("admin_stats"))
+async def admin_stats_handler(message: Message) -> None:
+    if not _is_admin(message):
+        await message.answer("Эта команда доступна только администратору.")
+        return
+    async with SessionLocal() as session:
+        summary = await get_usage_summary(session)
+    lines = [
+        "Статистика использования бота:",
+        f"Всего событий: {summary.total_events}",
+        f"Уникальных пользователей: {summary.unique_users}",
+        f"Успешных генераций: {summary.completed_generations}",
+    ]
+    if summary.top_users:
+        lines.append("")
+        lines.append("Топ пользователей:")
+        for row in summary.top_users:
+            label = f"@{row.username}" if row.username else (row.first_name or f"user_{row.user_id}")
+            lines.append(f"- {label}: {row.completed_count}")
+    if summary.top_genres:
+        lines.append("")
+        lines.append("Популярные жанры:")
+        for row in summary.top_genres:
+            lines.append(f"- {row.genre}: {row.completed_count}")
+    await message.answer("\n".join(lines))

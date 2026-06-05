@@ -149,6 +149,148 @@ python main.py
 
 Также нужен локальный `ffmpeg`.
 
+## Разделение на dev и prod бота
+
+Если хочешь спокойно тестировать локально и не конфликтовать с production polling, используй два разных Telegram-бота:
+
+- `dev bot` для локального запуска на компьютере
+- `prod bot` для VPS/сервера
+
+Для этого в проекте уже подготовлены:
+
+- [`.env.dev.example`](/Users/admin/Documents/DJ_AI_BOT/.env.dev.example)
+- [`.env.prod.example`](/Users/admin/Documents/DJ_AI_BOT/.env.prod.example)
+- [scripts/run_dev.sh](/Users/admin/Documents/DJ_AI_BOT/scripts/run_dev.sh)
+- [scripts/run_prod.sh](/Users/admin/Documents/DJ_AI_BOT/scripts/run_prod.sh)
+
+### Быстрый старт для dev
+
+```bash
+cp .env.dev.example .env.dev
+```
+
+Заполни в `.env.dev`:
+
+- `TELEGRAM_BOT_TOKEN` dev-бота
+- `TELEGRAM_API_ID`
+- `TELEGRAM_API_HASH`
+- `SOURCE_CHAT`
+- `CHANNEL_ID`
+- `ADMIN_USER_IDS`
+- `STORAGE_*`
+
+Запуск:
+
+```bash
+bash scripts/run_dev.sh
+```
+
+### Быстрый старт для prod
+
+```bash
+cp .env.prod.example .env.prod
+```
+
+Заполни `.env.prod` production-значениями и запускай на сервере:
+
+```bash
+bash scripts/run_prod.sh
+```
+
+### Как это работает
+
+- локальный `dev` использует `.env.dev`
+- серверный `prod` использует `.env.prod`
+- код один и тот же
+- токены разные, поэтому `TelegramConflictError` между dev и prod не возникает
+
+## Запуск на VPS 24/7
+
+Рекомендуемая production-схема:
+
+1. Код хранится на GitHub.
+2. Один VPS постоянно запускает бота через `systemd`.
+3. Локально ты только меняешь код, коммитишь и пушишь.
+4. На сервере выполняется `git pull` и рестарт сервиса.
+
+### Что подготовлено в репозитории
+
+- systemd unit: [deploy/systemd/wzdq-bot.service](/Users/admin/Documents/DJ_AI_BOT/deploy/systemd/wzdq-bot.service)
+- bootstrap-скрипт: [scripts/bootstrap_server.sh](/Users/admin/Documents/DJ_AI_BOT/scripts/bootstrap_server.sh)
+- deploy-скрипт: [scripts/deploy_prod.sh](/Users/admin/Documents/DJ_AI_BOT/scripts/deploy_prod.sh)
+
+### Первичная установка на сервере
+
+```bash
+sudo apt update
+sudo apt install -y git python3 python3-venv ffmpeg
+git clone https://github.com/Nikita2982/WZDQ-POOL.git /opt/WZDQ-POOL
+cd /opt/WZDQ-POOL
+bash scripts/bootstrap_server.sh /opt/WZDQ-POOL
+cp .env.example .env
+```
+
+После этого нужно заполнить production `.env` реальными значениями:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_API_ID`
+- `TELEGRAM_API_HASH`
+- `SOURCE_CHAT`
+- `CHANNEL_ID`
+- `ADMIN_USER_IDS`
+- параметры `STORAGE_*`
+
+### Подключение systemd
+
+```bash
+sudo cp deploy/systemd/wzdq-bot.service /etc/systemd/system/wzdq-bot.service
+sudo nano /etc/systemd/system/wzdq-bot.service
+```
+
+Проверь в unit-файле:
+
+- `User=ubuntu` или нужный серверный пользователь
+- `WorkingDirectory=/opt/WZDQ-POOL`
+- `ExecStart=/opt/WZDQ-POOL/venv/bin/python main.py`
+
+Потом запусти:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now wzdq-bot
+sudo systemctl status wzdq-bot
+```
+
+### Обновление после push в GitHub
+
+Когда ты внес локальные изменения и запушил их:
+
+```bash
+git add .
+git commit -m "..."
+git push
+```
+
+На сервере обновление делается так:
+
+```bash
+cd /opt/WZDQ-POOL
+bash scripts/deploy_prod.sh /opt/WZDQ-POOL wzdq-bot main
+```
+
+### Полезные команды на сервере
+
+```bash
+sudo systemctl restart wzdq-bot
+sudo systemctl stop wzdq-bot
+sudo systemctl status wzdq-bot
+journalctl -u wzdq-bot -f
+```
+
+### Важное правило для production
+
+Если используешь один и тот же `BOT_TOKEN` на сервере, не поднимай второй polling этого же бота локально на компьютере параллельно. Иначе Telegram вернет `TelegramConflictError`.
+
 ## Пример `.env`
 
 См. [`.env.example`](/Users/admin/Documents/DJ_AI_BOT/.env.example).
