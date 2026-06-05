@@ -278,6 +278,87 @@ cd /opt/WZDQ-POOL
 bash scripts/deploy_prod.sh /opt/WZDQ-POOL wzdq-bot main
 ```
 
+## Автодеплой через GitHub Actions
+
+В репозитории уже подготовлен workflow:
+
+- [.github/workflows/deploy-prod.yml](/Users/admin/Documents/DJ_AI_BOT/.github/workflows/deploy-prod.yml)
+
+Он делает деплой автоматически после каждого `push` в `main` и умеет запускаться вручную через `Run workflow`.
+
+### Что нужно добавить в GitHub Secrets
+
+В GitHub открой:
+
+- `Repository -> Settings -> Secrets and variables -> Actions`
+
+И создай secrets:
+
+- `PROD_HOST`
+  Твой IP сервера, например `45.150.10.25`
+- `PROD_USER`
+  Обычно `root`
+- `PROD_PORT`
+  Обычно `22`
+- `PROD_SSH_KEY`
+  Приватный SSH-ключ, которым GitHub сможет зайти на сервер
+
+### Как подготовить SSH-ключ для автодеплоя
+
+На своем Mac создай отдельный ключ именно для GitHub Actions:
+
+```bash
+ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/github_wzdq_deploy
+```
+
+Это создаст:
+
+- приватный ключ: `~/.ssh/github_wzdq_deploy`
+- публичный ключ: `~/.ssh/github_wzdq_deploy.pub`
+
+Потом:
+
+1. Добавь публичный ключ на сервер в `authorized_keys`
+
+```bash
+cat ~/.ssh/github_wzdq_deploy.pub
+```
+
+Скопируй вывод и на сервере добавь его в:
+
+```bash
+/root/.ssh/authorized_keys
+```
+
+2. Содержимое приватного ключа:
+
+```bash
+cat ~/.ssh/github_wzdq_deploy
+```
+
+целиком вставь в GitHub secret `PROD_SSH_KEY`.
+
+### Как будет работать дальше
+
+После настройки secrets цикл станет таким:
+
+1. Локально тестируешь на `dev`-боте.
+2. Делаешь:
+
+```bash
+git add .
+git commit -m "..."
+git push
+```
+
+3. GitHub Actions сам:
+   - зайдет на сервер
+   - сделает `git pull`
+   - установит зависимости
+   - перезапустит `wzdq-bot`
+
+То есть отдельный ручной `git pull` на сервере больше не понадобится.
+
 ### Полезные команды на сервере
 
 ```bash
