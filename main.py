@@ -1,9 +1,11 @@
 import asyncio
 import logging
+import os
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.exceptions import TelegramBadRequest, TelegramUnauthorizedError
 from aiogram.types import BotCommand, BotCommandScopeChat
 from uvicorn import Config, Server
 
@@ -18,9 +20,11 @@ from subscription import SubscriptionRequiredMiddleware
 
 async def run_bot() -> None:
     settings = get_settings()
+    session = AiohttpSession(proxy=settings.outbound_proxy_url or None)
     bot = Bot(
         token=settings.telegram_bot_token,
         default=DefaultBotProperties(parse_mode="HTML"),
+        session=session,
     )
     dispatcher = Dispatcher()
     dispatcher.message.outer_middleware(SubscriptionRequiredMiddleware())
@@ -28,36 +32,48 @@ async def run_bot() -> None:
     dispatcher.include_router(user_router)
     dispatcher.include_router(admin_router)
 
-    await bot.delete_webhook(drop_pending_updates=True)
-    await bot.set_my_commands(
-        [
-            BotCommand(command="start", description="Открыть бота"),
-        ]
-    )
-    for admin_user_id in settings.admin_user_ids:
+    try:
         try:
+            await bot.delete_webhook(drop_pending_updates=True)
             await bot.set_my_commands(
                 [
                     BotCommand(command="start", description="Открыть бота"),
-                    BotCommand(command="admin_stats", description="Статистика использования"),
-                    BotCommand(command="stats", description="Статистика треков"),
-                    BotCommand(command="scan_channel", description="Сканировать канал"),
-                    BotCommand(command="mark_unsuitable", description="Скрыть трек из выдачи"),
-                    BotCommand(command="fix_track", description="Исправить BPM и key"),
-                ],
-                scope=BotCommandScopeChat(chat_id=admin_user_id),
+                ]
             )
-        except TelegramBadRequest:
-            logging.warning(
-                "Skipped scoped admin commands for chat_id=%s because chat is not available yet",
-                admin_user_id,
+            for admin_user_id in settings.admin_user_ids:
+                try:
+                    await bot.set_my_commands(
+                        [
+                            BotCommand(command="start", description="Открыть бота"),
+                            BotCommand(command="admin_stats", description="Статистика использования"),
+                            BotCommand(command="stats", description="Статистика треков"),
+                            BotCommand(command="scan_channel", description="Сканировать канал"),
+                            BotCommand(command="mark_unsuitable", description="Скрыть трек из выдачи"),
+                            BotCommand(command="fix_track", description="Исправить BPM и key"),
+                        ],
+                        scope=BotCommandScopeChat(chat_id=admin_user_id),
+                    )
+                except TelegramBadRequest:
+                    logging.warning(
+                        "Skipped scoped admin commands for chat_id=%s because chat is not available yet",
+                        admin_user_id,
+                    )
+        except TelegramUnauthorizedError as exc:
+            env_file = os.getenv("APP_ENV_FILE", ".env")
+            logging.error(
+                "Telegram rejected bot authorization. Check TELEGRAM_BOT_TOKEN in %s.",
+                env_file,
             )
-    live_monitor_task = asyncio.create_task(run_live_monitor())
-    try:
-        await dispatcher.start_polling(bot)
+            raise RuntimeError(f"Invalid TELEGRAM_BOT_TOKEN configured in {env_file}") from exc
+
+        live_monitor_task = asyncio.create_task(run_live_monitor())
+        try:
+            await dispatcher.start_polling(bot)
+        finally:
+            live_monitor_task.cancel()
+            await asyncio.gather(live_monitor_task, return_exceptions=True)
     finally:
-        live_monitor_task.cancel()
-        await asyncio.gather(live_monitor_task, return_exceptions=True)
+        await bot.session.close()
 
 
 async def run_live_monitor() -> None:
@@ -75,7 +91,10 @@ async def run_api() -> None:
             log_level=settings.log_level.lower(),
         )
     )
-    await server.serve()
+    try:
+        await server.serve()
+    except BaseException:
+        logging.exception("API server stopped unexpectedly; bot will continue running without API")
 
 
 async def main() -> None:
@@ -86,7 +105,11 @@ async def main() -> None:
     )
     await init_db()
     try:
-        await asyncio.gather(run_bot(), run_api())
+        if settings.enable_api:
+            await asyncio.gather(run_bot(), run_api())
+        else:
+            logging.info("Built-in API is disabled via ENABLE_API=false")
+            await run_bot()
     finally:
         await close_db()
 

@@ -73,6 +73,7 @@ class ChannelScanner:
                     session_name.as_posix(),
                     self.settings.telegram_api_id,
                     self.settings.telegram_api_hash,
+                    proxy=self.settings.telethon_proxy,
                 ) as client:
                     entity = await client.get_entity(source)
                     chat_username = getattr(entity, "username", None)
@@ -397,6 +398,7 @@ class ChannelLiveMonitor:
                 session_path.as_posix(),
                 self.settings.telegram_api_id,
                 self.settings.telegram_api_hash,
+                proxy=self.settings.telethon_proxy,
             ) as client:
                 entity = await client.get_entity(source)
                 chat_username = getattr(entity, "username", None)

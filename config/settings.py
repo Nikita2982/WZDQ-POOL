@@ -1,6 +1,7 @@
 import os
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -31,6 +32,8 @@ class Settings(BaseSettings):
 
     api_host: str = Field(default="0.0.0.0", alias="API_HOST")
     api_port: int = Field(default=8080, alias="API_PORT")
+    enable_api: bool = Field(default=True, alias="ENABLE_API")
+    outbound_proxy_url: str = Field(default="", alias="OUTBOUND_PROXY_URL")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     temp_audio_dir: Path = Field(default=Path("/tmp/dj_ai_bot"), alias="TEMP_AUDIO_DIR")
     enable_zip_export: bool = Field(default=False, alias="ENABLE_ZIP_EXPORT")
@@ -56,6 +59,31 @@ class Settings(BaseSettings):
             for item in self.admin_user_ids_raw.split(",")
             if item.strip()
         }
+
+    @computed_field
+    @property
+    def telethon_proxy(self) -> tuple[str, str, int, bool, str | None, str | None] | None:
+        proxy_url = self.outbound_proxy_url.strip()
+        if not proxy_url:
+            return None
+
+        parsed = urlparse(proxy_url)
+        scheme = parsed.scheme.lower()
+        if scheme not in {"socks5", "socks4", "http"}:
+            raise ValueError(
+                "OUTBOUND_PROXY_URL must use socks5, socks4, or http scheme"
+            )
+        if not parsed.hostname or not parsed.port:
+            raise ValueError("OUTBOUND_PROXY_URL must include host and port")
+
+        return (
+            scheme,
+            parsed.hostname,
+            parsed.port,
+            True,
+            parsed.username,
+            parsed.password,
+        )
 
 
 @lru_cache

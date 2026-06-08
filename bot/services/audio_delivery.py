@@ -31,6 +31,7 @@ class AudioDeliveryService:
                 session_path.as_posix(),
                 self.settings.telegram_api_id,
                 self.settings.telegram_api_hash,
+                proxy=self.settings.telethon_proxy,
             ) as client:
                 entity = await client.get_entity(self._normalized_source_chat())
                 for track in tracks:
