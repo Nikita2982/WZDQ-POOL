@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 import uuid
 
 from aiogram import F, Router
@@ -30,7 +31,7 @@ from subscription import CHECK_SUBSCRIPTION_CALLBACK, require_subscription
 router = Router()
 settings = get_settings()
 audio_delivery = AudioDeliveryService()
-WELCOME_IMAGE_PATH = "/Users/admin/Downloads/AI PLAYLIST.png"
+WELCOME_IMAGE_PATH = Path(__file__).resolve().parents[2] / "assets" / "welcome.png"
 RECENT_GENERATIONS: dict[int, "RecentGeneration"] = {}
 ACTIVE_GENERATIONS: dict[str, "ActiveGeneration"] = {}
 
@@ -88,7 +89,7 @@ async def show_playlist_entrypoint(message: Message, state: FSMContext) -> None:
         "наш бот сделает это за тебя 😉"
     )
     keyboard_cleanup = await message.answer("\u2060", reply_markup=ReplyKeyboardRemove())
-    photo_path = FSInputFile(WELCOME_IMAGE_PATH)
+    photo_path = FSInputFile(WELCOME_IMAGE_PATH.as_posix())
     await message.answer_photo(photo=photo_path, caption=caption)
     await message.answer("Выбери следующий шаг", reply_markup=genre_entry_keyboard())
     await keyboard_cleanup.delete()

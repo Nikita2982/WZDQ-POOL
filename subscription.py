@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from aiogram import BaseMiddleware, Bot
@@ -23,7 +24,7 @@ SUBSCRIPTION_REQUIRED_TEXT = (
     "Приобрести подписку можно по <a href=\"https://t.me/wzdq_pool_pay_bot\">ссылке</a>."
 )
 SUBSCRIPTION_ERROR_TEXT = "⚠️ Не удалось проверить подписку. Попробуйте позже."
-SUBSCRIPTION_IMAGE_PATH = "/Users/admin/Desktop/subscribe.png"
+SUBSCRIPTION_IMAGE_PATH = Path(__file__).resolve().parent / "assets" / "subscribe.png"
 
 
 class SubscriptionCheckError(RuntimeError):
@@ -96,7 +97,7 @@ async def _notify_subscription_problem(
     async def send_with_fallback(bot: Bot, chat_id: int) -> None:
         if with_button:
             try:
-                photo_bytes = open(SUBSCRIPTION_IMAGE_PATH, "rb").read()
+                photo_bytes = SUBSCRIPTION_IMAGE_PATH.read_bytes()
                 await bot.send_photo(
                     chat_id=chat_id,
                     photo=BufferedInputFile(photo_bytes, filename="subscribe.png"),
