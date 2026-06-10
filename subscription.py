@@ -131,6 +131,14 @@ class SubscriptionRequiredMiddleware(BaseMiddleware):
         if user is None:
             return await handler(event, data)
 
+        chat = getattr(event, "chat", None)
+        if isinstance(event, CallbackQuery):
+            chat = getattr(event.message, "chat", None) if event.message else None
+
+        # Enforce subscription only in direct user-to-bot conversations.
+        if chat is None or getattr(chat, "type", None) != "private":
+            return await handler(event, data)
+
         if isinstance(event, CallbackQuery) and event.data == CHECK_SUBSCRIPTION_CALLBACK:
             return await handler(event, data)
 
