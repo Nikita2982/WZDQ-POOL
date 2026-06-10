@@ -62,7 +62,7 @@ class ChannelScanner:
     ) -> ScanSummary:
         source = self._normalize_source_chat(source_chat or self.settings.source_chat)
         scan_limit = limit or self.settings.default_scan_limit
-        session_name = self._get_scan_session_path()
+        session_name, base_session = self._prepare_scan_session()
 
         async with SessionLocal() as db_session:
             job = await create_scan_job(db_session, str(source))
@@ -149,7 +149,7 @@ class ChannelScanner:
                     updated_tracks=updated,
                     error_message=error_message,
                 )
-                self._cleanup_runtime_session(session_name)
+                self._persist_and_cleanup_runtime_session(session_name, base_session)
 
         return ScanSummary(processed_messages=processed, created_tracks=created, updated_tracks=updated)
 
@@ -223,19 +223,26 @@ class ChannelScanner:
     def _is_audio_message(self, message: Message) -> bool:
         return bool(message.file and (message.file.mime_type or "").startswith("audio"))
 
-    def _get_scan_session_path(self) -> Path:
+    def _prepare_scan_session(self) -> tuple[Path, Path | None]:
         sessions_dir = Path(".sessions")
         sessions_dir.mkdir(parents=True, exist_ok=True)
         base_session = sessions_dir / f"{self.settings.telethon_session_name}.session"
+        if not base_session.exists():
+            return base_session, None
+
         scan_session = sessions_dir / f"{self.settings.telethon_session_name}_scan_{uuid.uuid4().hex}.session"
-        if base_session.exists():
-            shutil.copy2(base_session, scan_session)
-        return scan_session
+        shutil.copy2(base_session, scan_session)
+        scan_session.chmod(0o600)
+        return scan_session, base_session
 
     @staticmethod
-    def _cleanup_runtime_session(session_path: Path) -> None:
-        session_path.unlink(missing_ok=True)
-        Path(f"{session_path}-journal").unlink(missing_ok=True)
+    def _persist_and_cleanup_runtime_session(session_path: Path, base_session: Path | None) -> None:
+        if base_session and session_path.exists():
+            shutil.copy2(session_path, base_session)
+            base_session.chmod(0o600)
+        if base_session is not None:
+            session_path.unlink(missing_ok=True)
+            Path(f"{session_path}-journal").unlink(missing_ok=True)
 
     def _build_sections(self, messages: list[Message]) -> list[GenreSection]:
         headers: list[tuple[int, str | None, int]] = []

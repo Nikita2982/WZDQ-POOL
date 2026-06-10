@@ -112,6 +112,7 @@ class AudioDeliveryService:
         for candidate in base_candidates:
             if candidate.exists():
                 shutil.copy2(candidate, runtime_session)
+                runtime_session.chmod(0o600)
                 return runtime_session
         return runtime_session
 
