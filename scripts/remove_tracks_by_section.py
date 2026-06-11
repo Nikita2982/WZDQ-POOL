@@ -55,7 +55,10 @@ async def _collect_section_message_ids(section_tag: str) -> tuple[str, list[int]
         matched_ids: list[int] = []
 
         async for message in client.iter_messages(entity, reverse=True):
-            raw_tag = extract_section_header_tag(message.message or "")
+            message_text = message.message or ""
+            raw_tag = extract_section_header_tag(message_text)
+            if raw_tag is None and f"#{target_tag}" in message_text.strip().lower():
+                raw_tag = target_tag
             if raw_tag is not None:
                 current_tag = raw_tag
                 continue
