@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import sqlite3
 import sys
 from pathlib import Path
 
 from telethon import TelegramClient
+from sqlalchemy import delete, select
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import get_settings
+from database.db import SessionLocal
+from database.models import Track
 from scanner.metadata_reader import extract_section_header_tag
 
 
@@ -66,59 +68,52 @@ async def _collect_section_message_ids(section_tag: str) -> tuple[str, list[int]
         return channel_id, matched_ids
 
 
-def _delete_tracks(channel_id: str, message_ids: list[int], *, apply: bool) -> None:
-    settings = get_settings()
-    database_url = settings.database_url
-    if not database_url.startswith("sqlite:///"):
-        raise RuntimeError("This script currently supports sqlite DATABASE_URL only")
-
-    db_path = database_url.removeprefix("sqlite:///")
-    connection = sqlite3.connect(db_path)
-    cursor = connection.cursor()
-
+async def _delete_tracks(channel_id: str, message_ids: list[int], *, apply: bool) -> None:
     if not message_ids:
         print("MATCHED_SECTION_TRACKS 0")
-        connection.close()
         return
 
-    placeholders = ",".join("?" for _ in message_ids)
-    rows = cursor.execute(
-        f"""
-        SELECT id, genre, artist, title, telegram_message_id, is_suitable
-        FROM tracks
-        WHERE telegram_channel_id = ?
-          AND telegram_message_id IN ({placeholders})
-        ORDER BY telegram_message_id ASC
-        """,
-        [channel_id, *message_ids],
-    ).fetchall()
+    async with SessionLocal() as session:
+        result = await session.execute(
+            select(Track)
+            .where(
+                Track.telegram_channel_id == channel_id,
+                Track.telegram_message_id.in_(message_ids),
+            )
+            .order_by(Track.telegram_message_id.asc())
+        )
+        rows = list(result.scalars().all())
 
-    print(f"MATCHED_SECTION_TRACKS {len(rows)}")
-    for row in rows:
-        print(row)
+        print(f"MATCHED_SECTION_TRACKS {len(rows)}")
+        for row in rows:
+            print(
+                (
+                    row.id,
+                    row.genre,
+                    row.artist,
+                    row.title,
+                    row.telegram_message_id,
+                    row.is_suitable,
+                )
+            )
 
-    if not apply or not rows:
-        connection.close()
-        return
+        if not apply or not rows:
+            return
 
-    cursor.execute(
-        f"""
-        DELETE FROM tracks
-        WHERE telegram_channel_id = ?
-          AND telegram_message_id IN ({placeholders})
-        """,
-        [channel_id, *message_ids],
-    )
-    deleted_rows = cursor.rowcount
-    connection.commit()
-    connection.close()
-    print(f"DELETED_ROWS {deleted_rows}")
+        delete_result = await session.execute(
+            delete(Track).where(
+                Track.telegram_channel_id == channel_id,
+                Track.telegram_message_id.in_(message_ids),
+            )
+        )
+        await session.commit()
+        print(f"DELETED_ROWS {delete_result.rowcount or 0}")
 
 
 async def _main() -> None:
     args = _build_parser().parse_args()
     channel_id, message_ids = await _collect_section_message_ids(args.section_tag)
-    _delete_tracks(channel_id, message_ids, apply=args.apply)
+    await _delete_tracks(channel_id, message_ids, apply=args.apply)
 
 
 if __name__ == "__main__":
