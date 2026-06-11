@@ -33,14 +33,21 @@ def _build_parser() -> argparse.ArgumentParser:
 async def _collect_section_message_ids(section_tag: str) -> tuple[str, list[int]]:
     settings = get_settings()
     session_path = Path(".sessions") / f"{settings.telethon_session_name}.session"
+    source_chat: str | int = settings.source_chat
+    if isinstance(source_chat, str):
+        value = source_chat.strip()
+        if value and value.lstrip("-").isdigit():
+            source_chat = int(value)
+        else:
+            source_chat = value
     async with TelegramClient(
         session_path.as_posix(),
         settings.telegram_api_id,
         settings.telegram_api_hash,
         proxy=settings.telethon_proxy,
     ) as client:
-        entity = await client.get_entity(settings.source_chat)
-        channel_id = str(getattr(entity, "id", settings.source_chat))
+        entity = await client.get_entity(source_chat)
+        channel_id = str(getattr(entity, "id", source_chat))
         target_tag = section_tag.lower().lstrip("#")
         current_tag: str | None = None
         matched_ids: list[int] = []
