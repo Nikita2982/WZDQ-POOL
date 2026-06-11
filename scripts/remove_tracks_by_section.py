@@ -32,8 +32,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
 async def _collect_section_message_ids(section_tag: str) -> tuple[str, list[int]]:
     settings = get_settings()
+    session_path = Path(".sessions") / f"{settings.telethon_session_name}.session"
     async with TelegramClient(
-        settings.telethon_session_name,
+        session_path.as_posix(),
         settings.telegram_api_id,
         settings.telegram_api_hash,
         proxy=settings.telethon_proxy,
