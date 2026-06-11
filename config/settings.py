@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     outbound_proxy_url: str = Field(default="", alias="OUTBOUND_PROXY_URL")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     temp_audio_dir: Path = Field(default=Path("/tmp/dj_ai_bot"), alias="TEMP_AUDIO_DIR")
+    bot_max_audio_upload_bytes: int = Field(
+        default=49 * 1024 * 1024,
+        alias="BOT_MAX_AUDIO_UPLOAD_BYTES",
+    )
     enable_zip_export: bool = Field(default=False, alias="ENABLE_ZIP_EXPORT")
     storage_enabled: bool = Field(default=False, alias="STORAGE_ENABLED")
     storage_endpoint_url: str = Field(default="", alias="STORAGE_ENDPOINT_URL")

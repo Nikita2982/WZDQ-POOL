@@ -67,6 +67,19 @@ class AudioDeliveryService:
                         if should_cancel and should_cancel():
                             cancelled = True
                             break
+                        file_size_bytes = (
+                            len(storage_bytes)
+                            if storage_bytes is not None
+                            else Path(temp_path).stat().st_size
+                        )
+                        if file_size_bytes > self.settings.bot_max_audio_upload_bytes:
+                            logger.warning(
+                                "Skipping oversized track for bot delivery: message_id=%s size_bytes=%s limit_bytes=%s",
+                                track.telegram_message_id,
+                                file_size_bytes,
+                                self.settings.bot_max_audio_upload_bytes,
+                            )
+                            continue
                         audio_bytes = storage_bytes if storage_bytes is not None else Path(temp_path).read_bytes()
                         thumbnail = await self._build_thumbnail_input(client, message, track.telegram_message_id)
                         await bot.send_audio(
