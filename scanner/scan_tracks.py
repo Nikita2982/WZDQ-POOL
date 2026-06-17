@@ -241,8 +241,12 @@ class ChannelScanner:
             shutil.copy2(session_path, base_session)
             base_session.chmod(0o600)
         if base_session is not None:
-            session_path.unlink(missing_ok=True)
-            Path(f"{session_path}-journal").unlink(missing_ok=True)
+            ChannelScanner._cleanup_runtime_session(session_path)
+
+    @staticmethod
+    def _cleanup_runtime_session(session_path: Path) -> None:
+        session_path.unlink(missing_ok=True)
+        Path(f"{session_path}-journal").unlink(missing_ok=True)
 
     def _build_sections(self, messages: list[Message]) -> list[GenreSection]:
         headers: list[tuple[int, str | None, int]] = []
@@ -279,12 +283,7 @@ class ChannelScanner:
         before_message_id: int,
     ) -> Message | None:
         async for message in client.iter_messages(entity, offset_id=before_message_id):
-            genre = extract_section_header_genre_from_text(
-                message.message or "",
-                supported_genres=self.settings.supported_genres,
-                hashtag_prefix=self.settings.genre_hashtag_prefix,
-            )
-            if genre:
+            if extract_section_header_tag(message.message or ""):
                 return message
         return None
 

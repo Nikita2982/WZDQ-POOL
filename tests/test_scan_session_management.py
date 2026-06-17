@@ -35,3 +35,15 @@ def test_prepare_scan_session_copies_existing_base_and_persists_back(tmp_path, m
 
     assert base_session.read_text() == "updated"
     assert not session_path.exists()
+
+
+def test_cleanup_runtime_session_removes_session_and_journal(tmp_path):
+    session_path = tmp_path / "demo_live.session"
+    journal_path = Path(f"{session_path}-journal")
+    session_path.write_text("runtime")
+    journal_path.write_text("journal")
+
+    ChannelScanner._cleanup_runtime_session(session_path)
+
+    assert not session_path.exists()
+    assert not journal_path.exists()
