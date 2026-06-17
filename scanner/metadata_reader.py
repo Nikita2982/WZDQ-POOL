@@ -18,7 +18,6 @@ GENRE_ALIAS_MAP = {
     "ru_rap_intro": "rap",
     "en_rap_intro": "rap",
     "weekly_update_rap": "rap",
-    "weekly_update_electronic": "electronic",
     "tech": "house",
     "bass": "house",
     "afro": "house",
@@ -35,6 +34,7 @@ IGNORED_SECTION_TAGS = {
     "beatport_top_10",
     "billboard_top_10",
     "soundcloud_reels",
+    "weekly_update_electronic",
 }
 
 

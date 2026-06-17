@@ -17,6 +17,7 @@ IGNORED_GENRES = (
     "beatport_top_10",
     "billboard_top_10",
     "soundcloud_reels",
+    "weekly_update_electronic",
 )
 
 
