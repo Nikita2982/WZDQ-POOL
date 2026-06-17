@@ -15,6 +15,7 @@ from database.crud import create_scan_job, finish_scan_job, get_max_track_messag
 from database.db import SessionLocal
 from scanner.metadata_reader import (
     build_message_link,
+    extract_first_hashtag,
     extract_genre_from_text,
     extract_section_header_tag,
     extract_section_header_genre_from_text,
@@ -252,14 +253,10 @@ class ChannelScanner:
         headers: list[tuple[int, str | None, int]] = []
         for index, message in enumerate(messages):
             text = message.message or ""
-            raw_tag = extract_section_header_tag(text)
+            raw_tag = self._extract_section_boundary_tag(message)
             if raw_tag is None:
                 continue
-            genre = extract_section_header_genre_from_text(
-                text,
-                supported_genres=self.settings.supported_genres,
-                hashtag_prefix=self.settings.genre_hashtag_prefix,
-            )
+            genre = self._extract_section_boundary_genre(text)
             headers.append((index, genre, message.id))
 
         sections: list[GenreSection] = []
@@ -283,7 +280,7 @@ class ChannelScanner:
         before_message_id: int,
     ) -> Message | None:
         async for message in client.iter_messages(entity, offset_id=before_message_id):
-            if extract_section_header_tag(message.message or ""):
+            if self._extract_section_boundary_tag(message):
                 return message
         return None
 
@@ -295,11 +292,7 @@ class ChannelScanner:
         before_message_id: int | None = None,
     ) -> GenreSection | None:
         async for message in client.iter_messages(entity, offset_id=before_message_id or 0):
-            genre = extract_section_header_genre_from_text(
-                message.message or "",
-                supported_genres=self.settings.supported_genres,
-                hashtag_prefix=self.settings.genre_hashtag_prefix,
-            )
+            genre = self._extract_section_boundary_genre(message.message or "")
             if genre:
                 return GenreSection(
                     genre=genre,
@@ -307,10 +300,33 @@ class ChannelScanner:
                     start_index=0,
                     end_index=0,
                 )
-            raw_tag = extract_section_header_tag(message.message or "")
+            raw_tag = self._extract_section_boundary_tag(message)
             if raw_tag:
                 return None
         return None
+
+    def _extract_section_boundary_tag(self, message: Message) -> str | None:
+        text = message.message or ""
+        raw_tag = extract_section_header_tag(text)
+        if raw_tag is not None:
+            return raw_tag
+        if self._is_audio_message(message):
+            return None
+        return extract_first_hashtag(text)
+
+    def _extract_section_boundary_genre(self, text: str) -> str | None:
+        genre = extract_section_header_genre_from_text(
+            text,
+            supported_genres=self.settings.supported_genres,
+            hashtag_prefix=self.settings.genre_hashtag_prefix,
+        )
+        if genre:
+            return genre
+        return extract_genre_from_text(
+            text,
+            supported_genres=self.settings.supported_genres,
+            hashtag_prefix=self.settings.genre_hashtag_prefix,
+        )
 
     async def _build_track_payload(
         self,
@@ -428,13 +444,9 @@ class ChannelLiveMonitor:
                     message = event.message
                     text = message.message or ""
 
-                    header_tag = extract_section_header_tag(text)
+                    header_tag = self.scanner._extract_section_boundary_tag(message)
                     if header_tag is not None:
-                        genre = extract_section_header_genre_from_text(
-                            text,
-                            supported_genres=self.settings.supported_genres,
-                            hashtag_prefix=self.settings.genre_hashtag_prefix,
-                        )
+                        genre = self.scanner._extract_section_boundary_genre(text)
                         self.current_section_genre = genre
                         self.current_header_message_id = message.id if genre else None
                         logger.info(

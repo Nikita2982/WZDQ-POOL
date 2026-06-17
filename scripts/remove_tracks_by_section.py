@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config.settings import get_settings
 from database.db import SessionLocal
 from database.models import Track
-from scanner.metadata_reader import extract_section_header_tag
+from scanner.metadata_reader import extract_first_hashtag, extract_section_header_tag
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -57,8 +57,10 @@ async def _collect_section_message_ids(section_tag: str) -> tuple[str, list[int]
         async for message in client.iter_messages(entity, reverse=True):
             message_text = message.message or ""
             raw_tag = extract_section_header_tag(message_text)
-            if raw_tag is None and f"#{target_tag}" in message_text.strip().lower():
-                raw_tag = target_tag
+            if raw_tag is None and not (
+                message.file and (message.file.mime_type or "").startswith("audio")
+            ):
+                raw_tag = extract_first_hashtag(message_text)
             if raw_tag is not None:
                 current_tag = raw_tag
                 continue

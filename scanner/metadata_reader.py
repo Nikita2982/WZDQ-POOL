@@ -98,6 +98,15 @@ def extract_section_header_tag(text: str | None) -> str | None:
     return match.group(1)
 
 
+def extract_first_hashtag(text: str | None) -> str | None:
+    if not text:
+        return None
+    match = re.search(r"#([a-z0-9_]+)", text.lower())
+    if not match:
+        return None
+    return match.group(1)
+
+
 def build_message_link(chat_username: str | None, message_id: int) -> str | None:
     if not chat_username:
         return None
