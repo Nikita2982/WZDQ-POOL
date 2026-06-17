@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 import uuid
 from pathlib import Path
@@ -15,6 +16,7 @@ from storage import ObjectStorageService
 
 SECTION_ORDER = ["electronic", "house", "rap", "dance_pop"]
 logger = logging.getLogger(__name__)
+TECHNICAL_FILENAME_PREFIX_RE = re.compile(r"^\s*\d{2,6}[_\-. ]+")
 
 
 class AudioDeliveryService:
@@ -179,21 +181,21 @@ class AudioDeliveryService:
         raw_metadata = getattr(track, "raw_metadata", None) or {}
         raw_file_name = (raw_metadata.get("file_name") or "").strip() if isinstance(raw_metadata, dict) else ""
         if raw_file_name:
-            base_name = Path(raw_file_name).stem
+            base_name = AudioDeliveryService._clean_filename_stem(Path(raw_file_name).stem)
         else:
             artist = (getattr(track, "artist", None) or "").strip()
-            title = (getattr(track, "title", None) or "").strip()
-            if title and "_" in title:
-                prefix, _, rest = title.partition("_")
-                if prefix.isdigit() and rest.strip():
-                    title = rest.strip()
+            title = AudioDeliveryService._clean_filename_stem((getattr(track, "title", None) or "").strip())
             if artist and title:
                 base_name = f"{artist} - {title}"
             elif title:
                 base_name = title
             elif fallback_name:
-                base_name = Path(fallback_name).stem
+                base_name = AudioDeliveryService._clean_filename_stem(Path(fallback_name).stem)
             else:
                 base_name = f"track_{message_id}"
         safe_name = "".join("_" if char in '<>:"/\\\\|?*' else char for char in base_name).strip()
         return f"{safe_name}.mp3"
+
+    @staticmethod
+    def _clean_filename_stem(value: str) -> str:
+        return TECHNICAL_FILENAME_PREFIX_RE.sub("", value).strip()
