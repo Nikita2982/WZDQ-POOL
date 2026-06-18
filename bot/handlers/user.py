@@ -89,7 +89,16 @@ async def show_playlist_entrypoint(message: Message, state: FSMContext) -> None:
         "Привет! Это <b>WZDQ PLAYLIST GENERATOR</b>\n"
         "Генератор плэйлиста на твою тусовку 🪩\n"
         "Если не успеваешь или просто лень подбирать трэки, "
-        "наш бот сделает это за тебя 😉"
+        "наш бот сделает это за тебя 😉\n\n"
+        "<blockquote>"
+        "Как пользоваться ботом:\n"
+        "1. Выбери рубрику.\n"
+        "2. Для Rap выбери BPM-диапазон.\n"
+        "3. Выбери тайминг: 30 или 60 минут.\n"
+        "4. Дождись готовой подборки.\n"
+        "5. Если хочешь новую версию, нажми Повторить генерацию.\n\n"
+        "Важно: тайминг считается по правилу 50% длины трека."
+        "</blockquote>"
     )
     keyboard_cleanup = await message.answer("\u2060", reply_markup=ReplyKeyboardRemove())
     photo_path = FSInputFile(WELCOME_IMAGE_PATH.as_posix())
