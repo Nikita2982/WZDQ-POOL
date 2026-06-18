@@ -62,10 +62,23 @@ def post_generation_keyboard_with_bpm(
             [
                 InlineKeyboardButton(
                     text="Повторить генерацию ⚙️",
-                    callback_data=f"repeat:{genre}:{duration}{repeat_suffix}",
+                    callback_data=f"repeat_select:{genre}{repeat_suffix}",
                 ),
                 InlineKeyboardButton(text="Выбор жанра", callback_data="nav:genre_entry"),
             ]
+        ]
+    )
+
+
+def repeat_duration_keyboard(genre: str, bpm_bucket: str | None) -> InlineKeyboardMarkup:
+    repeat_suffix = f":{bpm_bucket}" if bpm_bucket else ""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="30 ⏰", callback_data=f"repeat:{genre}:30{repeat_suffix}"),
+                InlineKeyboardButton(text="60 ⏰", callback_data=f"repeat:{genre}:60{repeat_suffix}"),
+            ],
+            [InlineKeyboardButton(text="Выбор жанра", callback_data="nav:genre_entry")],
         ]
     )
 

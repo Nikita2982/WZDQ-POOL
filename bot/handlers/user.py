@@ -16,6 +16,7 @@ from bot.keyboards.menu import (
     post_generation_keyboard,
     post_generation_keyboard_with_bpm,
     RAP_BPM_META,
+    repeat_duration_keyboard,
     SECTION_LOADING_META,
     rap_bpm_keyboard,
     section_keyboard,
@@ -196,6 +197,18 @@ async def duration_handler(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
 
 
+@router.callback_query(F.data.startswith("repeat_select:"))
+async def repeat_generation_select_handler(callback: CallbackQuery, state: FSMContext) -> None:
+    _, genre, *rest = callback.data.split(":")
+    bpm_bucket = rest[0] if rest else None
+    await state.clear()
+    await callback.answer()
+    await callback.message.answer(
+        "Выбери тайминг для повторной генерации",
+        reply_markup=repeat_duration_keyboard(genre, bpm_bucket),
+    )
+
+
 @router.callback_query(F.data.startswith("repeat:"))
 async def repeat_generation_handler(callback: CallbackQuery, state: FSMContext) -> None:
     _, genre, duration_raw, *rest = callback.data.split(":")
@@ -219,7 +232,7 @@ async def repeat_generation_handler(callback: CallbackQuery, state: FSMContext) 
         duration,
         actor=callback.from_user,
         bpm_bucket=bpm_bucket,
-        excluded_track_ids=_repeated_track_ids(previous_generation, genre, duration, bpm_bucket),
+        excluded_track_ids=_repeated_track_ids(previous_generation, genre, bpm_bucket),
         previous_track_count=len(previous_generation.track_ids) if previous_generation else None,
     )
     await state.clear()
@@ -358,14 +371,11 @@ def _filter_tracks_for_requested_bucket(tracks: list, genre: str, bpm_bucket: st
 def _repeated_track_ids(
     previous_generation: RecentGeneration | None,
     genre: str,
-    duration: int,
     bpm_bucket: str | None,
 ) -> set[int]:
     if previous_generation is None:
         return set()
     if previous_generation.genre != genre:
-        return set()
-    if previous_generation.duration != duration:
         return set()
     if previous_generation.bpm_bucket != bpm_bucket:
         return set()
