@@ -81,6 +81,7 @@ async def check_subscription_handler(callback: CallbackQuery, state: FSMContext)
 
 async def show_playlist_entrypoint(message: Message, state: FSMContext) -> None:
     await state.clear()
+    _reset_recent_generation(message.chat.id)
     await state.set_state(PlaylistStates.genre)
     caption = (
         "Привет! Это <b>WZDQ PLAYLIST GENERATOR</b>\n"
@@ -108,6 +109,7 @@ async def show_sections(message: Message) -> None:
 
 @router.callback_query(F.data == "nav:genre_entry")
 async def genre_entry_handler(callback: CallbackQuery, state: FSMContext) -> None:
+    _reset_recent_generation(callback.message.chat.id)
     await state.set_state(PlaylistStates.genre)
     await show_sections(callback.message)
     await callback.answer()
@@ -155,6 +157,7 @@ async def rap_bpm_handler(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "nav:sections")
 async def sections_nav_handler(callback: CallbackQuery, state: FSMContext) -> None:
+    _reset_recent_generation(callback.message.chat.id)
     await state.set_state(PlaylistStates.genre)
     await show_sections(callback.message)
     await callback.answer()
@@ -361,6 +364,10 @@ def _repeated_track_ids(
     if previous_generation.bpm_bucket != bpm_bucket:
         return set()
     return set(previous_generation.track_ids)
+
+
+def _reset_recent_generation(chat_id: int) -> None:
+    RECENT_GENERATIONS.pop(chat_id, None)
 
 
 async def _log_usage_event(
