@@ -311,8 +311,11 @@ async def _run_playlist_generation(
                 "Просто закидывай трэки в DJ-софт и беги на сет, "
                 "за все остальное мы позаботились 😉"
             )
-            if excluded_track_ids and previous_track_count and len(result.tracks) < previous_track_count:
-                completion_text += "\n\nПовторяющиеся треки исключены, ждем обновления пула."
+            if excluded_track_ids and result.total_duration_sec < duration * 60:
+                completion_text += (
+                    "\n\nТреков меньше - но они уникальны, "
+                    "убрали повторяющиеся треки 💗"
+                )
             await loading_message.delete()
             await message.answer(
                 completion_text,
