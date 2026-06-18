@@ -296,7 +296,11 @@ async def _run_playlist_generation(
         if excluded_track_ids:
             tracks = [track for track in tracks if getattr(track, "id", None) not in excluded_track_ids]
 
-        result = generate_dj_playlist(tracks, target_duration_minutes=duration)
+        result = generate_dj_playlist(
+            tracks,
+            target_duration_minutes=duration,
+            strict_key_progression=bool(excluded_track_ids),
+        )
         if result.tracks:
             sent_count, cancelled = await audio_delivery.send_tracks(
                 bot,

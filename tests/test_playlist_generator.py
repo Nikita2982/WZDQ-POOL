@@ -26,7 +26,12 @@ def test_generate_dj_playlist_returns_sorted_mixable_tracks(monkeypatch):
         StubTrack(3, "afro_house", "C", "Three", 380, 121, "10A", 0.57),
     ]
 
-    result = generate_dj_playlist(tracks, target_duration_minutes=12, mood="warm-up")
+    result = generate_dj_playlist(
+        tracks,
+        target_duration_minutes=12,
+        mood="warm-up",
+        strict_key_progression=True,
+    )
 
     assert len(result.tracks) >= 2
     for current, next_track in zip(result.tracks, result.tracks[1:]):
@@ -42,7 +47,12 @@ def test_generate_dj_playlist_allows_only_one_relaxed_key_transition_when_needed
         StubTrack(4, "electronic", "D", "Four", 360, 123, "4B", 0.58),
     ]
 
-    result = generate_dj_playlist(tracks, target_duration_minutes=12, mood="warm-up")
+    result = generate_dj_playlist(
+        tracks,
+        target_duration_minutes=12,
+        mood="warm-up",
+        strict_key_progression=True,
+    )
 
     incompatible_transitions = 0
     for current, next_track in zip(result.tracks, result.tracks[1:]):

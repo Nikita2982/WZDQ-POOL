@@ -30,6 +30,8 @@ def generate_dj_playlist(
     tracks: Sequence,
     target_duration_minutes: int,
     mood: str = "warm-up",
+    *,
+    strict_key_progression: bool = False,
 ) -> PlaylistResult:
     mood_profile = MOOD_PROFILES.get(mood, MOOD_PROFILES["warm-up"])
     candidates = [
@@ -70,6 +72,7 @@ def generate_dj_playlist(
             current,
             candidates,
             mood_profile["energy"],
+            strict_key_progression=strict_key_progression,
             allow_relaxed_key=not used_relaxed_key_transition,
         )
         if next_track is None:
@@ -118,6 +121,7 @@ def _pick_next_track(
     candidates: Iterable,
     target_energy: float,
     *,
+    strict_key_progression: bool,
     allow_relaxed_key: bool,
 ):
     candidate_list = list(candidates)
@@ -129,14 +133,15 @@ def _pick_next_track(
     if not narrowed_candidates:
         return None, False
 
-    compatible_key_candidates = [track for track in narrowed_candidates if _key_compatible(current, track)]
     used_relaxed_key_now = False
-    if compatible_key_candidates:
-        narrowed_candidates = compatible_key_candidates
-    elif allow_relaxed_key:
-        used_relaxed_key_now = True
-    else:
-        return None, False
+    if strict_key_progression:
+        compatible_key_candidates = [track for track in narrowed_candidates if _key_compatible(current, track)]
+        if compatible_key_candidates:
+            narrowed_candidates = compatible_key_candidates
+        elif allow_relaxed_key:
+            used_relaxed_key_now = True
+        else:
+            return None, False
 
     scored_tracks = []
     for track in narrowed_candidates:
