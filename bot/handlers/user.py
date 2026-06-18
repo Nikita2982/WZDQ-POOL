@@ -207,6 +207,7 @@ async def repeat_generation_handler(callback: CallbackQuery, state: FSMContext) 
         duration=duration,
     )
     await callback.answer()
+    await callback.message.answer("Запускаем повторную генерацию. Предыдущий результат сохранен выше 👆")
     await _run_playlist_generation(
         callback.message,
         callback.bot,
