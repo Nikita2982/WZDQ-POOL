@@ -132,62 +132,97 @@ def _pick_next_track(
     preferred_key_window: set[str] | None,
 ):
     candidate_list = list(candidates)
-    narrowed_candidates = [track for track in candidate_list if _bpm_compatible(current, track, tolerance=6.0)]
-    if len(narrowed_candidates) < 4:
-        narrowed_candidates = [track for track in candidate_list if _bpm_compatible(current, track, tolerance=10.0)]
-    if not narrowed_candidates:
-        narrowed_candidates = [track for track in candidate_list if _bpm_compatible(current, track, tolerance=12.0)]
-    if not narrowed_candidates:
-        return None, False
-
-    if preferred_key_window:
-        preferred_candidates = [
-            track
-            for track in narrowed_candidates
-            if getattr(track, "camelot_key", None) in preferred_key_window
-        ]
-        if preferred_candidates:
-            narrowed_candidates = preferred_candidates
-
-    used_relaxed_key_now = False
     if strict_key_progression:
-        compatible_key_candidates = [track for track in narrowed_candidates if _key_compatible(current, track)]
-        if compatible_key_candidates:
+        fallback_steps = [
+            (6.0, True, True, False),
+            (6.0, False, True, False),
+            (10.0, True, True, False),
+            (10.0, False, True, False),
+            (12.0, True, True, False),
+            (12.0, False, True, False),
+        ]
+        if allow_relaxed_key:
+            fallback_steps.extend(
+                [
+                    (10.0, True, False, True),
+                    (12.0, False, False, True),
+                ]
+            )
+    else:
+        fallback_steps = [
+            (6.0, True, False, False),
+            (6.0, False, False, False),
+            (10.0, True, False, False),
+            (10.0, False, False, False),
+            (12.0, True, False, False),
+            (12.0, False, False, False),
+        ]
+
+    for bpm_tolerance, require_zone, require_key, allow_any_key in fallback_steps:
+        narrowed_candidates = [
+            track for track in candidate_list if _bpm_compatible(current, track, tolerance=bpm_tolerance)
+        ]
+        if not narrowed_candidates:
+            continue
+
+        if require_zone and preferred_key_window:
+            zone_candidates = [
+                track
+                for track in narrowed_candidates
+                if getattr(track, "camelot_key", None) in preferred_key_window
+            ]
+            if not zone_candidates:
+                continue
+            narrowed_candidates = zone_candidates
+
+        if require_key:
+            compatible_key_candidates = [track for track in narrowed_candidates if _key_compatible(current, track)]
+            if not compatible_key_candidates:
+                continue
             narrowed_candidates = compatible_key_candidates
-        elif allow_relaxed_key:
-            used_relaxed_key_now = True
-        else:
-            return None, False
 
-    scored_tracks = []
-    for track in narrowed_candidates:
-        score = transition_score(
-            current_bpm=getattr(current, "bpm", None),
-            next_bpm=getattr(track, "bpm", None),
-            current_key=getattr(current, "camelot_key", None),
-            next_key=getattr(track, "camelot_key", None),
-            current_energy=getattr(current, "energy_level", None),
-            next_energy=getattr(track, "energy_level", None),
-            target_energy=target_energy,
-        )
-        bpm_distance = _bpm_distance(current, track)
-        score -= min(4.0, bpm_distance / 2)
-        if getattr(track, "bpm", 0) < getattr(current, "bpm", 0) - 2:
-            score -= 2
-        scored_tracks.append((score, track))
+        scored_tracks = []
+        for track in narrowed_candidates:
+            score = transition_score(
+                current_bpm=getattr(current, "bpm", None),
+                next_bpm=getattr(track, "bpm", None),
+                current_key=getattr(current, "camelot_key", None),
+                next_key=getattr(track, "camelot_key", None),
+                current_energy=getattr(current, "energy_level", None),
+                next_energy=getattr(track, "energy_level", None),
+                target_energy=target_energy,
+            )
+            bpm_distance = _bpm_distance(current, track)
+            score -= min(4.0, bpm_distance / 2)
+            if getattr(track, "bpm", 0) < getattr(current, "bpm", 0) - 2:
+                score -= 2
 
-    if not scored_tracks:
-        return None
+            if preferred_key_window and getattr(track, "camelot_key", None) in preferred_key_window:
+                score += 1.25
+            if strict_key_progression and not _key_compatible(current, track):
+                score -= 3.0
+            if require_zone and preferred_key_window and getattr(track, "camelot_key", None) not in preferred_key_window:
+                score -= 2.5
 
-    scored_tracks.sort(key=lambda item: item[0], reverse=True)
-    top_pool_size = min(8, len(scored_tracks))
-    top_pool = scored_tracks[:top_pool_size]
-    max_score = top_pool[0][0]
-    weighted_tracks = []
-    for score, track in top_pool:
-        weight = max(1, int((score - max_score + 3) * 10))
-        weighted_tracks.extend([track] * weight)
-    return RNG.choice(weighted_tracks), used_relaxed_key_now
+            scored_tracks.append((score, track))
+
+        if not scored_tracks:
+            continue
+
+        scored_tracks.sort(key=lambda item: item[0], reverse=True)
+        top_pool_size = min(8, len(scored_tracks))
+        top_pool = scored_tracks[:top_pool_size]
+        max_score = top_pool[0][0]
+        weighted_tracks = []
+        for score, track in top_pool:
+            weight = max(1, int((score - max_score + 3) * 10))
+            weighted_tracks.extend([track] * weight)
+
+        chosen = RNG.choice(weighted_tracks)
+        used_relaxed_key_now = allow_any_key and not _key_compatible(current, chosen)
+        return chosen, used_relaxed_key_now
+
+    return None, False
 
 
 def _key_compatible(current, next_track) -> bool:
