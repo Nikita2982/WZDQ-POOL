@@ -35,6 +35,7 @@ audio_delivery = AudioDeliveryService()
 WELCOME_IMAGE_PATH = Path(__file__).resolve().parents[2] / "assets" / "welcome.png"
 RECENT_GENERATIONS: dict[int, "RecentGeneration"] = {}
 ACTIVE_GENERATIONS: dict[str, "ActiveGeneration"] = {}
+VISIBLE_SECTIONS = {"electronic", "house", "rap"}
 
 
 @dataclass(slots=True)
@@ -103,6 +104,7 @@ async def show_sections(message: Message) -> None:
     sections = [
         (section, stats.get(section, 0))
         for section in SECTION_ORDER
+        if section in VISIBLE_SECTIONS
         if stats.get(section, 0) > 0
     ]
     await message.edit_text("Выбери раздел", reply_markup=section_keyboard(sections))
