@@ -61,3 +61,25 @@ def test_generate_dj_playlist_allows_only_one_relaxed_key_transition_when_needed
 
     assert len(result.tracks) == 3
     assert incompatible_transitions == 1
+
+
+def test_generate_dj_playlist_rotates_preferred_key_zone_every_eight_tracks(monkeypatch):
+    monkeypatch.setattr(playlist_generator, "RNG", __import__("random").Random(0))
+    monkeypatch.setattr(playlist_generator, "_pick_start_track", lambda candidates: candidates[0])
+    tracks = [
+        StubTrack(1, "electronic", "A", "One", 300, 120, "8A", 0.40),
+        StubTrack(2, "electronic", "B", "Two", 300, 120, "9A", 0.41),
+        StubTrack(3, "electronic", "C", "Three", 300, 121, "10A", 0.42),
+        StubTrack(4, "electronic", "D", "Four", 300, 121, "8A", 0.43),
+        StubTrack(5, "electronic", "E", "Five", 300, 122, "9A", 0.44),
+        StubTrack(6, "electronic", "F", "Six", 300, 122, "10A", 0.45),
+        StubTrack(7, "electronic", "G", "Seven", 300, 121, "8A", 0.46),
+        StubTrack(8, "electronic", "H", "Eight", 300, 120, "10A", 0.47),
+        StubTrack(9, "electronic", "I", "Nine", 300, 121, "1A", 0.48),
+        StubTrack(10, "electronic", "J", "Ten", 300, 121, "2A", 0.49),
+    ]
+
+    result = generate_dj_playlist(tracks, target_duration_minutes=45, mood="warm-up")
+
+    assert len(result.tracks) >= 9
+    assert result.tracks[8].camelot_key in {"1A", "2A", "3A"}

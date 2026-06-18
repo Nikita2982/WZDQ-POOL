@@ -16,6 +16,9 @@ MOOD_PROFILES = {
 
 RNG = random.SystemRandom()
 BPM_COMPATIBILITY_TOLERANCE = 2.3
+KEY_ZONE_BLOCK_SIZE = 8
+KEY_ZONE_SHIFT = 5
+KEY_ZONE_WIDTH = 3
 
 
 @dataclass(slots=True)
@@ -61,6 +64,7 @@ def generate_dj_playlist(
     selected = [_pick_start_track(candidates)]
     candidates.remove(selected[0])
     candidates = _filter_candidates_for_bpm_family(candidates, selected[0])
+    anchor_camelot_key = getattr(selected[0], "camelot_key", None)
     target_duration_sec = target_duration_minutes * 60
     effective_duration = _effective_track_duration_sec(selected[0])
     actual_duration = int(selected[0].duration_sec or 0)
@@ -68,12 +72,14 @@ def generate_dj_playlist(
 
     while candidates and effective_duration < target_duration_sec:
         current = selected[-1]
+        preferred_key_window = _preferred_key_window(anchor_camelot_key, len(selected))
         next_track, used_relaxed_key_now = _pick_next_track(
             current,
             candidates,
             mood_profile["energy"],
             strict_key_progression=strict_key_progression,
             allow_relaxed_key=not used_relaxed_key_transition,
+            preferred_key_window=preferred_key_window,
         )
         if next_track is None:
             break
@@ -123,6 +129,7 @@ def _pick_next_track(
     *,
     strict_key_progression: bool,
     allow_relaxed_key: bool,
+    preferred_key_window: set[str] | None,
 ):
     candidate_list = list(candidates)
     narrowed_candidates = [track for track in candidate_list if _bpm_compatible(current, track, tolerance=6.0)]
@@ -132,6 +139,15 @@ def _pick_next_track(
         narrowed_candidates = [track for track in candidate_list if _bpm_compatible(current, track, tolerance=12.0)]
     if not narrowed_candidates:
         return None, False
+
+    if preferred_key_window:
+        preferred_candidates = [
+            track
+            for track in narrowed_candidates
+            if getattr(track, "camelot_key", None) in preferred_key_window
+        ]
+        if preferred_candidates:
+            narrowed_candidates = preferred_candidates
 
     used_relaxed_key_now = False
     if strict_key_progression:
@@ -180,6 +196,34 @@ def _key_compatible(current, next_track) -> bool:
     if not current_key or not next_key:
         return False
     return current_key == next_key or camelot_compatible(current_key, next_key)
+
+
+def _preferred_key_window(anchor_camelot_key: str | None, selected_count: int) -> set[str] | None:
+    if not anchor_camelot_key:
+        return None
+    if selected_count < KEY_ZONE_BLOCK_SIZE:
+        return None
+
+    parsed = _parse_camelot_key(anchor_camelot_key)
+    if parsed is None:
+        return None
+
+    number, mode = parsed
+    block_index = selected_count // KEY_ZONE_BLOCK_SIZE
+    start_number = ((number - 1) + (block_index * KEY_ZONE_SHIFT)) % 12 + 1
+    return {
+        f"{((start_number - 1 + offset) % 12) + 1}{mode}"
+        for offset in range(KEY_ZONE_WIDTH)
+    }
+
+
+def _parse_camelot_key(value: str | None) -> tuple[int, str] | None:
+    if not value or len(value) < 2:
+        return None
+    try:
+        return int(value[:-1]), value[-1]
+    except ValueError:
+        return None
 
 
 def _bpm_distance(current, next_track) -> float:
