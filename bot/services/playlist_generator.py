@@ -63,7 +63,6 @@ def generate_dj_playlist(
     )
     selected = [_pick_start_track(candidates)]
     candidates.remove(selected[0])
-    candidates = _filter_candidates_for_bpm_family(candidates, selected[0])
     anchor_camelot_key = getattr(selected[0], "camelot_key", None)
     target_duration_sec = target_duration_minutes * 60
     effective_duration = _effective_track_duration_sec(selected[0])
@@ -108,18 +107,6 @@ def _effective_track_duration_sec(track) -> int:
 def _pick_start_track(candidates: Sequence):
     top_pool_size = min(12, len(candidates))
     return RNG.choice(list(candidates[:top_pool_size]))
-
-
-def _filter_candidates_for_bpm_family(candidates: Sequence, start_track):
-    if getattr(start_track, "bpm", None) is None:
-        return list(candidates)
-    filtered = [track for track in candidates if _bpm_compatible(start_track, track, tolerance=8.0)]
-    if len(filtered) >= 10:
-        return filtered
-    filtered = [track for track in candidates if _bpm_compatible(start_track, track, tolerance=12.0)]
-    if len(filtered) >= 10:
-        return filtered
-    return list(candidates)
 
 
 def _pick_next_track(
