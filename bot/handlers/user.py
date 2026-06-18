@@ -311,7 +311,10 @@ async def _run_playlist_generation(
                 "Просто закидывай трэки в DJ-софт и беги на сет, "
                 "за все остальное мы позаботились 😉"
             )
-            if excluded_track_ids and result.total_duration_sec < duration * 60:
+            if excluded_track_ids and (
+                result.total_duration_sec < duration * 60
+                or (previous_track_count is not None and len(result.tracks) < previous_track_count)
+            ):
                 completion_text += (
                     "\n\nТреков меньше - но они уникальны, "
                     "убрали повторяющиеся треки 💗"

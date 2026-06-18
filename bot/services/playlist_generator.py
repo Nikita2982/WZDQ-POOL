@@ -5,6 +5,7 @@ import random
 from typing import Iterable, Sequence
 
 from bot.services.harmonic_mixing import transition_score
+from analysis.camelot import camelot_compatible
 
 MOOD_PROFILES = {
     "warm-up": {"energy": 0.42, "min_bpm": 110, "max_bpm": 122},
@@ -61,13 +62,20 @@ def generate_dj_playlist(
     target_duration_sec = target_duration_minutes * 60
     effective_duration = _effective_track_duration_sec(selected[0])
     actual_duration = int(selected[0].duration_sec or 0)
+    used_relaxed_key_transition = False
 
     while candidates and effective_duration < target_duration_sec:
         current = selected[-1]
-        next_track = _pick_next_track(current, candidates, mood_profile["energy"])
+        next_track, used_relaxed_key_now = _pick_next_track(
+            current,
+            candidates,
+            mood_profile["energy"],
+            allow_relaxed_key=not used_relaxed_key_transition,
+        )
         if next_track is None:
             break
         candidates.remove(next_track)
+        used_relaxed_key_transition = used_relaxed_key_transition or used_relaxed_key_now
         next_effective_duration = _effective_track_duration_sec(next_track)
         projected_effective_duration = effective_duration + next_effective_duration
         if projected_effective_duration > target_duration_sec * 1.1 and selected:
@@ -105,7 +113,13 @@ def _filter_candidates_for_bpm_family(candidates: Sequence, start_track):
     return list(candidates)
 
 
-def _pick_next_track(current, candidates: Iterable, target_energy: float):
+def _pick_next_track(
+    current,
+    candidates: Iterable,
+    target_energy: float,
+    *,
+    allow_relaxed_key: bool,
+):
     candidate_list = list(candidates)
     narrowed_candidates = [track for track in candidate_list if _bpm_compatible(current, track, tolerance=6.0)]
     if len(narrowed_candidates) < 4:
@@ -113,7 +127,16 @@ def _pick_next_track(current, candidates: Iterable, target_energy: float):
     if not narrowed_candidates:
         narrowed_candidates = [track for track in candidate_list if _bpm_compatible(current, track, tolerance=12.0)]
     if not narrowed_candidates:
-        return None
+        return None, False
+
+    compatible_key_candidates = [track for track in narrowed_candidates if _key_compatible(current, track)]
+    used_relaxed_key_now = False
+    if compatible_key_candidates:
+        narrowed_candidates = compatible_key_candidates
+    elif allow_relaxed_key:
+        used_relaxed_key_now = True
+    else:
+        return None, False
 
     scored_tracks = []
     for track in narrowed_candidates:
@@ -143,7 +166,15 @@ def _pick_next_track(current, candidates: Iterable, target_energy: float):
     for score, track in top_pool:
         weight = max(1, int((score - max_score + 3) * 10))
         weighted_tracks.extend([track] * weight)
-    return RNG.choice(weighted_tracks)
+    return RNG.choice(weighted_tracks), used_relaxed_key_now
+
+
+def _key_compatible(current, next_track) -> bool:
+    current_key = getattr(current, "camelot_key", None)
+    next_key = getattr(next_track, "camelot_key", None)
+    if not current_key or not next_key:
+        return False
+    return current_key == next_key or camelot_compatible(current_key, next_key)
 
 
 def _bpm_distance(current, next_track) -> float:
