@@ -207,7 +207,6 @@ async def repeat_generation_handler(callback: CallbackQuery, state: FSMContext) 
         duration=duration,
     )
     await callback.answer()
-    await callback.message.delete()
     await _run_playlist_generation(
         callback.message,
         callback.bot,
