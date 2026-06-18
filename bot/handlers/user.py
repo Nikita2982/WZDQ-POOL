@@ -264,12 +264,12 @@ async def _run_playlist_generation(
     if genre == "rap" and bpm_bucket:
         bucket_label = RAP_BPM_META.get(bpm_bucket, bpm_bucket)
         loading_message = await message.answer(
-            f"Плэйлист {genre_label} генерируется ⏳\nBPM-кластер: {bucket_label}",
+            f"Плейлист {genre_label} генерируется ⏳\nBPM-кластер: {bucket_label}",
             reply_markup=stop_generation_keyboard(job_id),
         )
     else:
         loading_message = await message.answer(
-            f"Плэйлист {genre_label} генерируется ⏳",
+            f"Плейлист {genre_label} генерируется ⏳",
             reply_markup=stop_generation_keyboard(job_id),
         )
 

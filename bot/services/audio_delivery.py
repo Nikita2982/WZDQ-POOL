@@ -90,7 +90,7 @@ class AudioDeliveryService:
                             thumbnail=thumbnail,
                             duration=getattr(track, "duration_sec", None),
                             performer=(getattr(track, "artist", None) or None),
-                            title=(getattr(track, "title", None) or None),
+                            title=self._display_title(track),
                         )
                         sent_count += 1
                     except Exception:
@@ -195,6 +195,11 @@ class AudioDeliveryService:
                 base_name = f"track_{message_id}"
         safe_name = "".join("_" if char in '<>:"/\\\\|?*' else char for char in base_name).strip()
         return f"{safe_name}.mp3"
+
+    @staticmethod
+    def _display_title(track) -> str | None:
+        title = AudioDeliveryService._clean_filename_stem((getattr(track, "title", None) or "").strip())
+        return title or None
 
     @staticmethod
     def _clean_filename_stem(value: str) -> str:

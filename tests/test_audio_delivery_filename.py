@@ -25,3 +25,11 @@ def test_original_filename_strips_numeric_prefix_from_title_fallback():
     filename = AudioDeliveryService._original_filename(track, 1077, None)
 
     assert filename == "Trizha Harun - POP DAT THANG.mp3"
+
+
+def test_display_title_strips_numeric_prefix():
+    track = SimpleNamespace(title="1083_SEXY BACK SUNBURN EDIT")
+
+    title = AudioDeliveryService._display_title(track)
+
+    assert title == "SEXY BACK SUNBURN EDIT"
