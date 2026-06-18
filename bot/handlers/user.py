@@ -258,6 +258,16 @@ async def repeat_generation_handler(callback: CallbackQuery, state: FSMContext) 
     await state.clear()
 
 
+@router.callback_query(F.data == "report_problem")
+async def report_problem_handler(callback: CallbackQuery) -> None:
+    await callback.answer()
+    await callback.message.answer(
+        "Если бот выдал неподходящий по жанру трек - "
+        "перешли трек с указанием выбранного жанра, "
+        "мы исправим проблему 🫶 @supbotwzdq"
+    )
+
+
 @router.callback_query(F.data.startswith("stop_gen:"))
 async def stop_generation_handler(callback: CallbackQuery) -> None:
     job_id = callback.data.split(":", maxsplit=1)[1]

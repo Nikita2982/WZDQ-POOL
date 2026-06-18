@@ -65,7 +65,8 @@ def post_generation_keyboard_with_bpm(
                     callback_data=f"repeat_select:{genre}{repeat_suffix}",
                 ),
                 InlineKeyboardButton(text="Выбор жанра", callback_data="nav:genre_entry"),
-            ]
+            ],
+            [InlineKeyboardButton(text="Сообщить о проблеме⚙️", callback_data="report_problem")],
         ]
     )
 
