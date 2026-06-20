@@ -100,7 +100,7 @@ async def admin_stats_handler(message: Message) -> None:
     ]
     if summary.top_users:
         lines.append("")
-        lines.append("Топ пользователей:")
+        lines.append("Пользователи бота:")
         for row in summary.top_users:
             label = f"@{row.username}" if row.username else (row.first_name or f"user_{row.user_id}")
             lines.append(f"- {label}: {row.completed_count}")

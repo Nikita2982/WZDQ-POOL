@@ -214,7 +214,6 @@ async def get_usage_summary(session: AsyncSession) -> SimpleNamespace:
         .where(UsageEvent.event_type == "generation_completed")
         .group_by(UsageEvent.user_id)
         .order_by(func.count(UsageEvent.id).desc(), UsageEvent.user_id.asc())
-        .limit(5)
     )
     top_genres_result = await session.execute(
         select(
