@@ -4,10 +4,10 @@ After=network.target
 
 [Service]
 Type=simple
-User=ubuntu
+User=root
 WorkingDirectory=/opt/WZDQ-POOL
 Environment="PYTHONUNBUFFERED=1"
-ExecStart=/opt/WZDQ-POOL/venv/bin/python main.py
+ExecStart=/bin/bash /opt/WZDQ-POOL/scripts/run_prod.sh
 Restart=always
 RestartSec=5
 

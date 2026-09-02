@@ -19,5 +19,5 @@ jobs:
           key: ${{ secrets.PROD_SSH_KEY }}
           port: ${{ secrets.PROD_PORT }}
           script: |
-            cd /root/WZDQ-POOL
-            bash scripts/deploy_prod.sh /root/WZDQ-POOL wzdq-bot main
+            cd /opt/WZDQ-POOL
+            bash scripts/deploy_prod.sh /opt/WZDQ-POOL wzdq-bot main

@@ -28,6 +28,7 @@ GENRE_ALIAS_MAP = {
 IGNORED_SECTION_TAGS = {
     "acapella",
     "samples",
+    "pack",
     "scratch",
     "en_intro",
     "tools",

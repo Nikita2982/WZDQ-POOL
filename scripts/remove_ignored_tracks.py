@@ -5,6 +5,7 @@ import sqlite3
 IGNORED_GENRES = (
     "acapella",
     "samples",
+    "pack",
     "scratch",
     "en_intro",
     "tools",

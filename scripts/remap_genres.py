@@ -11,6 +11,7 @@ from scanner.metadata_reader import GENRE_ALIAS_MAP
 IGNORED_GENRES = (
     "acapella",
     "samples",
+    "pack",
     "scratch",
     "en_intro",
     "tools",

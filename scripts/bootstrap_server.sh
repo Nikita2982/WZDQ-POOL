@@ -22,7 +22,7 @@ pip install -r requirements.txt
 echo
 echo "Bootstrap complete."
 echo "Next steps:"
-echo "1. Copy .env.example to .env and fill real production values."
+echo "1. Copy .env.prod.example to .env.prod and fill real production values."
 echo "2. Copy deploy/systemd/wzdq-bot.service to /etc/systemd/system/."
 echo "3. Update User= and WorkingDirectory= in the service file if needed."
 echo "4. Run: sudo systemctl daemon-reload"

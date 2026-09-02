@@ -227,10 +227,10 @@ sudo apt install -y git python3 python3-venv ffmpeg
 git clone https://github.com/Nikita2982/WZDQ-POOL.git /opt/WZDQ-POOL
 cd /opt/WZDQ-POOL
 bash scripts/bootstrap_server.sh /opt/WZDQ-POOL
-cp .env.example .env
+cp .env.prod.example .env.prod
 ```
 
-После этого нужно заполнить production `.env` реальными значениями:
+После этого нужно заполнить production `.env.prod` реальными значениями:
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_API_ID`
@@ -238,6 +238,8 @@ cp .env.example .env
 - `SOURCE_CHAT`
 - `CHANNEL_ID`
 - `ADMIN_USER_IDS`
+- `ENABLE_API=false`
+- `OUTBOUND_PROXY_URL=socks5://127.0.0.1:1080`, если сервер ходит в Telegram через локальный `xray`
 - параметры `STORAGE_*`
 
 ### Подключение systemd
@@ -249,9 +251,9 @@ sudo nano /etc/systemd/system/wzdq-bot.service
 
 Проверь в unit-файле:
 
-- `User=ubuntu` или нужный серверный пользователь
+- `User=root` или нужный серверный пользователь
 - `WorkingDirectory=/opt/WZDQ-POOL`
-- `ExecStart=/opt/WZDQ-POOL/venv/bin/python main.py`
+- `ExecStart=/bin/bash /opt/WZDQ-POOL/scripts/run_prod.sh`
 
 Потом запусти:
 
@@ -259,6 +261,21 @@ sudo nano /etc/systemd/system/wzdq-bot.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now wzdq-bot
 sudo systemctl status wzdq-bot
+```
+
+Для первого запуска `Telethon` нужно один раз создать production session вручную:
+
+```bash
+sudo systemctl stop wzdq-bot
+cd /opt/WZDQ-POOL
+APP_ENV_FILE=/opt/WZDQ-POOL/.env.prod ./venv/bin/python main.py
+```
+
+Когда `Telethon` попросит телефон и код, введи данные Telegram-аккаунта, который состоит в исходном канале. После успешного входа останови ручной запуск через `Ctrl+C` и запусти сервис:
+
+```bash
+sudo systemctl start wzdq-bot
+sudo journalctl -u wzdq-bot -n 80 --no-pager
 ```
 
 ### Обновление после push в GitHub
