@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import shutil
@@ -7,6 +8,7 @@ import uuid
 from pathlib import Path
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.types import BufferedInputFile
 from telethon import TelegramClient
 
@@ -24,7 +26,45 @@ class AudioDeliveryService:
         self.settings = get_settings()
         self.storage = ObjectStorageService()
 
-    async def send_tracks(self, bot: Bot, chat_id: int, tracks: list, *, should_cancel=None) -> tuple[int, bool]:
+    async def send_stored_tracks(self, bot: Bot, chat_id: int, tracks: list, *, should_cancel=None, on_progress=None) -> tuple[int, bool]:
+        """Deliver cloud-backed Mini App sets without opening a Telegram user session."""
+        sent_count = 0
+        for track in tracks:
+            if should_cancel and should_cancel():
+                return sent_count, True
+            try:
+                audio_bytes = await asyncio.to_thread(self._get_storage_track_bytes, track)
+                if not audio_bytes or len(audio_bytes) > self.settings.bot_max_audio_upload_bytes:
+                    logger.warning("Cloud audio unavailable or oversized: track_id=%s", track.id)
+                    continue
+                if should_cancel and should_cancel():
+                    return sent_count, True
+                for attempt in range(3):
+                    try:
+                        await bot.send_audio(
+                            chat_id=chat_id,
+                            audio=BufferedInputFile(audio_bytes, filename=self._original_filename(
+                                track, track.telegram_message_id, None)),
+                            duration=getattr(track, "duration_sec", None),
+                            performer=getattr(track, "artist", None) or None,
+                            title=self._display_title(track),
+                            request_timeout=120,
+                        )
+                        break
+                    except TelegramRetryAfter as exc:
+                        if attempt == 2:
+                            raise
+                        await asyncio.sleep(exc.retry_after)
+                        if should_cancel and should_cancel():
+                            return sent_count, True
+                sent_count += 1
+                if on_progress:
+                    await on_progress(sent_count)
+            except Exception:
+                logger.warning("Cloud audio delivery failed: track_id=%s", track.id, exc_info=True)
+        return sent_count, False
+
+    async def send_tracks(self, bot: Bot, chat_id: int, tracks: list, *, should_cancel=None, on_progress=None) -> tuple[int, bool]:
         sent_count = 0
         cancelled = False
         session_path = self._prepare_runtime_delivery_session()
@@ -47,7 +87,7 @@ class AudioDeliveryService:
                             track.telegram_message_id,
                         )
                         continue
-                    storage_bytes = self._get_storage_track_bytes(track)
+                    storage_bytes = await asyncio.to_thread(self._get_storage_track_bytes, track)
                     cached_result = None if storage_bytes is not None else self._get_cached_track_file(track)
                     from_cache = cached_result is not None
                     download_result = None if storage_bytes else cached_result or await self._download_track_file(
@@ -93,6 +133,8 @@ class AudioDeliveryService:
                             title=self._display_title(track),
                         )
                         sent_count += 1
+                        if on_progress:
+                            await on_progress(sent_count)
                     except Exception:
                         logger.warning(
                             "Bot audio upload failed: message_id=%s",

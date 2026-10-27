@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#100b13">
+  <meta name="description" content="WZDQ Pool — твой следующий DJ-сет начинается здесь.">
+  <title>WZDQ POOL APP</title>
+  <link rel="icon" href="/app/static/mark.svg" type="image/svg+xml">
+  <link rel="preload" as="image" href="/app/static/images/pool-background.jpg">
+  <link rel="stylesheet" href="/app/static/app.css?v=studio-2">
+  <link rel="stylesheet" href="/app/static/studio.css?v=youtube-audio-1">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/app/static/app.js?v=connection-1" defer></script>
+  <script src="/app/static/youtube.js?v=audio-1" defer></script>
+  <script src="/app/static/profile.js?v=1" defer></script>
+  <script src="/app/static/knowledge.js?v=connection-1" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#home" aria-label="WZDQ POOL APP, главная">WZDQ POOL APP</a>
+      <div class="nav-caption">ТВОЯ МУЗЫКА</div>
+      <nav class="desktop-nav" aria-label="Основная навигация">
+        <button class="nav-item active" data-page="home"><span data-icon="grid"></span>Генерация<span class="nav-dot"></span></button>
+        <button class="nav-item" data-page="pool"><span data-icon="wave"></span>Пул музыки</button>
+        <button class="nav-item" data-page="youtube"><span data-icon="youtube"></span>YouTube → треки</button>
+        <button class="nav-item" data-page="sets"><span data-icon="layers"></span>Мои сеты<span class="saved-count">0</span></button>
+        <button class="nav-item" data-page="knowledge"><span data-icon="book"></span>Знания</button>
+        <button class="nav-item" data-page="favorites"><span data-icon="heart"></span>Избранное</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="membership"><span class="membership-icon" data-icon="spark"></span><span>Музыка без лишнего.<small>Для тех, кто за пультом.</small></span></div><button class="profile-button" data-page="profile"><span class="avatar">DJ</span><span class="profile-name">Твой профиль<small>WZDQ COMMUNITY</small></span><span data-icon="arrow-up-right"></span></button></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><a class="mobile-brand" href="#home">WZDQ POOL APP</a><div class="breadcrumb">ГЕНЕРАЦИЯ / WZDQ POOL APP</div><div class="topbar-right"><span class="status-pill"><i></i><span id="mode-label">DJ WORKSPACE</span></span><button class="avatar small" data-page="profile" aria-label="Профиль">DJ</button></div></header>
+      <main id="main-content" tabindex="-1">
+        <section id="page-home" class="page">
+          <div class="studio-greeting"><span id="greeting-name">Привет, DJ</span><span class="studio-date">Хороший день для нового сета <span data-icon="spark"></span></span></div>
+          <div class="intro studio-hero">
+            <div class="hero-copy"><p class="eyebrow"><span class="live-dot"></span> WZDQ’S POOL · SPECIAL EDITS</p><h1>Сгенерируй<br>свой <span>плэй-лист</span></h1><p class="intro-copy">От первого трека до последнего перехода.<br>Находи музыку. Собирай сеты. Задавай настроение.</p><div class="hero-actions"><button class="primary" data-action="focus-builder"><span data-icon="spark"></span>Собрать сет<span data-icon="arrow-right"></span></button><button class="secondary" data-page="pool"><span data-icon="search"></span>Открыть пул</button></div><div class="hero-bottom"><span><i></i> ОТОБРАНО ДЛЯ DJ</span><span>BPM / KEY / ENERGY</span></div></div>
+            <div class="hero-art"><img src="/app/static/images/pool-generation.jpg" alt="WZDQ POOL — generation ⚙️, фирменный диско-шар" width="1280" height="1280"></div>
+          </div>
+          <div class="studio-stats"><button data-page="pool"><span class="stat-icon" data-icon="wave"></span><span><strong id="stat-tracks">—</strong><small>треков для сетов</small></span><span data-icon="arrow-up-right"></span></button><button data-page="sets"><span class="stat-icon" data-icon="layers"></span><span><strong id="stat-sets">0</strong><small>твоих сетов</small></span><span data-icon="arrow-up-right"></span></button><button data-page="favorites"><span class="stat-icon" data-icon="heart"></span><span><strong id="stat-favorites">0</strong><small>любимых сетов</small></span><span data-icon="arrow-up-right"></span></button></div>
+          <button class="youtube-launch" data-page="youtube"><span class="youtube-launch-icon" data-icon="youtube"></span><span><strong>Услышал крутой сет?</strong><small>Вставь ссылку с YouTube — найди треки прямо здесь</small></span><span data-icon="arrow-up-right"></span></button>
+          <div id="recent-sets" hidden></div>
+          <div class="section-heading"><h2>Какой звук сегодня? <span>ШАГ 01</span></h2><span class="section-note"><i></i> ВЫБЕРИ ЖАНР</span></div>
+          <div class="genre-grid" id="genre-grid" role="group" aria-label="Выбери жанр">
+            <button class="genre-card selected electronic" data-genre="electronic" aria-label="Выбрать Electronic" aria-pressed="true"><div class="art art-electronic"><div class="art-grid"></div><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="orb orb-three"></div><span class="genre-art-index">01 / FREQUENCY</span><span class="genre-art-title">Electronic</span><span class="genre-art-detail">TECHNO · PROGRESSIVE</span><span class="genre-art-count" id="count-electronic">— треков</span><span class="genre-art-check" data-icon="check"></span></div></button>
+            <button class="genre-card house" data-genre="house" aria-label="Выбрать House" aria-pressed="false"><div class="art art-house"><div class="sun"></div><div class="house-lines"></div><span class="genre-art-index">02 / GROOVE</span><span class="genre-art-title">House</span><span class="genre-art-detail">DEEP · AFRO · TECH</span><span class="genre-art-count" id="count-house">— треков</span><span class="genre-art-check" data-icon="check"></span></div></button>
+            <button class="genre-card rap" data-genre="rap" aria-label="Выбрать Rap" aria-pressed="false"><div class="art art-rap"><div class="rap-star">✳</div><span class="genre-art-index">03 / CULTURE</span><span class="genre-art-title">Rap</span><span class="genre-art-detail">HIP-HOP · TRAP · DRILL</span><span class="genre-art-count" id="count-rap">— треков</span><span class="genre-art-check" data-icon="check"></span></div></button>
+          </div>
+          <section class="builder" id="set-builder" aria-labelledby="builder-title"><div class="builder-main"><div class="builder-title"><span class="step-badge">02</span><div><h2 id="builder-title">Настрой свой сет</h2><p>Выбери длительность — подберём совместимые треки.</p></div></div><div class="duration-control" role="group" aria-label="Длительность сета"><button class="duration active" data-duration="30" aria-pressed="true"><strong>30</strong><span>минут</span></button><button class="duration" data-duration="60" aria-pressed="false"><strong>60</strong><span>минут</span></button></div></div><div class="bpm-options" id="bpm-options" hidden><p>Твой BPM-диапазон</p><div role="group" aria-label="BPM-диапазон"><button class="bpm active" data-bpm="low_double" aria-pressed="true">70–76 / 140–152</button><button class="bpm" data-bpm="mid_low" aria-pressed="false">95–103</button><button class="bpm" data-bpm="mid" aria-pressed="false">107–117</button><button class="bpm" data-bpm="mid_high" aria-pressed="false">123–130</button></div></div><div class="builder-footer"><p><span data-icon="shuffle"></span> <span id="builder-summary">Electronic · 30 минут</span></p><button class="primary" id="generate-button"><span data-icon="spark"></span><span id="generate-label">Собрать сет</span><span data-icon="arrow-right"></span></button></div></section>
+          <div class="feature-row"><div><span data-icon="wave"></span><span>Плавные переходы<small>Совместимые BPM и тональности</small></span></div><div><span data-icon="layers"></span><span>Каждый сет — новый<small>Твой звук, другая история</small></span></div><div><span data-icon="send"></span><span>Твой сет под рукой<small>Сохраняй и скачивай треклист</small></span></div></div>
+          <div class="preview-note" id="preview-note" hidden><span data-icon="info"></span><p>Ты в деморежиме. Попробуй собрать сет из примеров. Реальная библиотека и отправка доступны внутри Telegram.</p></div>
+          <footer class="page-footer"><span>WZDQ POOL © <span id="year"></span></span><span>LESS SEARCHING. MORE PLAYING. <span class="footer-star">✳</span></span></footer>
+        </section>
+        <section id="page-pool" class="page" hidden>
+          <div class="page-heading"><p class="eyebrow">WZDQ MUSIC POOL</p><h1>В поисках грува.</h1><p>Твоя коллекция музыки. Найди трек, с которого всё начнётся.</p></div>
+          <form id="pool-filters" class="pool-filters">
+            <div class="pool-search-row"><label class="pool-search"><span data-icon="search"></span><input name="q" placeholder="Название трека или исполнитель…" aria-label="Поиск по трекам и исполнителям" maxlength="200" type="search" autocomplete="off"></label><button type="button" class="secondary filter-toggle" id="toggle-filters" aria-expanded="false" aria-controls="pool-advanced"><span data-icon="sliders"></span>Фильтры<span id="filter-count" hidden>0</span></button></div>
+            <div id="pool-chips" class="pool-chips" role="group" aria-label="Быстрый выбор жанра"></div>
+            <div id="pool-advanced" class="pool-advanced" hidden><label>Жанр<select name="genre" id="pool-genre"><option value="">Все жанры</option></select></label><label>BPM от<input name="bpm_min" type="number" min="0" max="400" step="any" placeholder="Любой"></label><label>BPM до<input name="bpm_max" type="number" min="0" max="400" step="any" placeholder="Любой"></label><label>Camelot<select name="key" id="pool-key"><option value="">Любая</option></select></label><button class="primary" type="submit">Применить</button><button class="secondary" type="reset">Сбросить</button></div>
+          </form>
+          <div class="pool-summary"><span id="pool-count" role="status" aria-live="polite"></span><button class="secondary" data-action="pool-build">К генератору →</button></div>
+          <p class="mix-note">Здесь можно искать музыку и выбирать жанр для сета. Прослушивание аудио пока не подключено.</p>
+          <div id="pool-results" aria-live="polite"></div>
+          <div class="pool-pagination"><button class="secondary" id="pool-prev">← Назад</button><span id="pool-page"></span><button class="secondary" id="pool-next">Далее →</button></div>
+        </section>
+        <section id="page-youtube" class="page" hidden>
+          <div class="page-heading"><p class="eyebrow">YOUTUBE / TRACK ID</p><h1>Что играет в сете?</h1><p>Вставь ссылку на DJ-сет. Мы найдём треки,<br>а ты добавишь новые имена в свою коллекцию.</p></div>
+          <form id="youtube-form" class="youtube-form"><label for="youtube-url">Ссылка на DJ-сет с YouTube</label><div class="youtube-input-row"><span data-icon="youtube"></span><input id="youtube-url" type="url" inputmode="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=…" maxlength="2048" required><button class="primary" id="youtube-start" type="submit"><span data-icon="spark"></span><span>Найти треки</span></button></div><figure id="youtube-preview" class="youtube-preview" hidden aria-live="polite"></figure><p>Сначала проверим опубликованный треклист, затем распознаем аудио всего сета и объединим результаты. Одновременно ищем аудиофайлы найденных треков. Когда файл готов, его можно скачать на устройство. Редкие ремиксы могут не найтись.</p></form>
+          <div id="youtube-current" aria-live="polite"></div>
+          <div id="youtube-history"></div>
+        </section>
+        <section id="page-knowledge" class="page" hidden>
+          <div class="page-heading"><p class="eyebrow">WZDQ / DJ KNOWLEDGE</p><h1>Знания</h1><p>Приёмы, идеи и практика для тех, кто за пультом.</p></div>
+          <div class="knowledge-hero"><div><span class="knowledge-kicker">ОТ СЛУШАТЕЛЯ К СЕЛЕКТОРУ</span><h2>Учись. Пробуй.<br><span>Звучи по-своему.</span></h2><p>Видеоуроки для твоего следующего шага в диджеинге.</p></div><div class="knowledge-art" aria-hidden="true"><span data-icon="book"></span><span class="knowledge-art-play" data-icon="play"></span><i></i></div></div>
+          <div id="knowledge-manage" hidden><button class="secondary" id="knowledge-add-toggle" aria-expanded="false"><span data-icon="download"></span>Добавить видео</button>
+            <form id="knowledge-upload-form" hidden><div class="knowledge-upload-heading"><h2>Новое видео</h2><span>Видно всем участникам пула</span></div><label>Название<input id="knowledge-upload-title" type="text" maxlength="300" placeholder="Например, основы сведения" required></label><label>Видеофайл<input id="knowledge-upload-file" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" required></label><p>MP4, MOV или WebM · до 500 МБ. HEVC подготовим автоматически.</p><div id="knowledge-upload-progress" hidden aria-live="polite"><div class="progress-track"><div class="progress-fill" id="knowledge-upload-fill" style="width:0%"></div></div><p id="knowledge-upload-status"></p></div><div class="knowledge-upload-actions"><button class="primary" id="knowledge-upload-submit" type="submit">Загрузить видео</button><button class="secondary" id="knowledge-upload-cancel" type="button">Отмена</button></div></form>
+          </div>
+          <div id="knowledge-player" hidden></div>
+          <div id="knowledge-controls" hidden><label class="knowledge-search"><span data-icon="search"></span><input id="knowledge-search" type="search" placeholder="Найти видео или приём" aria-label="Поиск по обучающим видео" maxlength="200"></label><div id="knowledge-categories" class="pool-chips"></div></div>
+          <div class="section-heading knowledge-library-heading"><h2>Видеотека</h2><span id="knowledge-count" class="section-note">Загружаем…</span></div>
+          <div id="knowledge-content" aria-live="polite"></div>
+        </section>
+        <section id="page-result" class="page" hidden></section>
+        <section id="page-sets" class="page" hidden></section>
+        <section id="page-favorites" class="page" hidden></section>
+        <section id="page-profile" class="page" hidden></section>
+      </main>
+    </div>
+    <nav class="mobile-nav" aria-label="Мобильная навигация"><button class="active" data-page="home"><span data-icon="grid"></span>Генерация</button><button data-page="pool"><span data-icon="wave"></span>Пул</button><button data-page="youtube"><span data-icon="youtube"></span>YouTube</button><button data-page="sets"><span data-icon="layers"></span>Мои сеты</button><button data-page="knowledge"><span data-icon="book"></span>Знания</button><button data-page="favorites"><span data-icon="heart"></span>Избранное</button></nav>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="access-gate" class="access-gate" hidden><div><span class="gate-logo">wzdq®</span><h2 id="gate-title">Открой приложение в Telegram</h2><p id="gate-message"></p><button class="primary" id="retry-auth">Попробовать снова</button><a href="https://t.me/wzdq_pool_pay_bot" class="text-link" id="subscribe-link" hidden>Оформить подписку ↗</a></div></div>
+  <noscript>Для работы WZDQ App включи JavaScript.</noscript>
+</body>
+</html>

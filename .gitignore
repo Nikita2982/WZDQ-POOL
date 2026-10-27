@@ -42,3 +42,7 @@ env/
 *.log
 *.tmp
 *.swp
+
+# Uploaded Mini App teaching videos
+.data/knowledge/
+.data/youtube-audio/
