@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     miniapp_local: bool = Field(default=False, alias="MINIAPP_LOCAL")
     miniapp_delivery_enabled: bool = Field(default=True, alias="MINIAPP_DELIVERY_ENABLED")
     miniapp_auth_max_age: int = Field(default=3600, ge=60, le=86400, alias="MINIAPP_AUTH_MAX_AGE")
+    spotify_api_base_url: str = Field(default="https://ausensbot.online", alias="SPOTIFY_API_BASE_URL")
+    spotify_api_key: str = Field(default="", alias="SPOTIFY_API_KEY")
     outbound_proxy_url: str = Field(default="", alias="OUTBOUND_PROXY_URL")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     temp_audio_dir: Path = Field(default=Path("/tmp/dj_ai_bot"), alias="TEMP_AUDIO_DIR")

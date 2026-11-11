@@ -17,7 +17,9 @@ const paths = {
   clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   book:'<path d="M12 6c-3-2-7-2-10-1v15c3-1 7-1 10 1 3-2 7-2 10-1V5c-3-1-7-1-10 1Zm0 0v15"/>',
   play:'<path d="m9 5 11 7-11 7z"/>',
+  pause:'<path d="M8 5h3v14H8zM15 5h3v14h-3z"/>',
   youtube:'<rect x="2" y="5" width="20" height="14" rx="4"/><path d="m10 9 5 3-5 3z"/>',
+  spotify:'<circle cx="12" cy="12" r="9"/><path d="M7 9.5c4.2-1 7.8-.4 10.5 1.3M7.6 12.5c3.4-.7 6.4-.2 9 1.1M8.2 15.2c2.7-.5 5.1-.1 7.2.9"/>',
   search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
   sliders:'<path d="M4 7h5m4 0h7M4 17h9m4 0h3"/><circle cx="11" cy="7" r="2"/><circle cx="15" cy="17" r="2"/>',
   stop:'<rect x="5" y="5" width="14" height="14" rx="2"/>',
@@ -25,8 +27,8 @@ const paths = {
 const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name] || paths.wave}</svg>`;
 function hydrateIcons(root=document) { root.querySelectorAll('[data-icon]').forEach(el => {el.innerHTML=icon(el.dataset.icon);}); }
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const labels={electronic:'Electronic',house:'House',rap:'Rap'};
-const genreName=genre=>({...labels,dance_pop:'Dance Pop'}[genre]||genre);
+const labels={electronic:'Электроника',house:'Хаус',rap:'Рэп'};
+const genreName=genre=>({...labels,dance_pop:'Танцевальная поп-музыка'}[genre]||genre);
 const bpmLabels={low_double:'70–76 / 140–152',mid_low:'95–103',mid:'107–117',mid_high:'123–130'};
 const state={page:'home',genre:'electronic',duration:30,bpm:'low_double',sets:[],current:null,user:{first_name:'DJ'},demo:false,local:false,loading:false,poll:null,toastTimer:null,counts:{},authenticated:false,deliveryEnabled:false};
 const telegram=window.Telegram?.WebApp;
@@ -35,12 +37,13 @@ const $=selector=>document.querySelector(selector);
 function haptic(){try{telegram?.HapticFeedback?.selectionChanged();}catch{}}
 function toast(message){clearTimeout(state.toastTimer);const el=$('#toast');el.textContent=message;el.hidden=false;state.toastTimer=setTimeout(()=>{el.hidden=true;},5000);}
 async function api(path,options={}){
-  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),20000);
-  const method=(options.method||'GET').toUpperCase();
+  const {timeoutMs=20000,...fetchOptions}=options;
+  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),timeoutMs);
+  const method=(fetchOptions.method||'GET').toUpperCase();
   // Explicit JSON bodies avoid empty POST transport issues in browser tunnels.
   const body=options.body??(!['GET','HEAD'].includes(method)?'{}':undefined);
   try{
-    const response=await fetch('/miniapp-api'+path,{...options,method,body,signal:controller.signal,cache:'no-store',headers:{'Content-Type':'application/json','X-Pinggy-No-Screen':'1',...(initData?{Authorization:'tma '+initData}:{}),...options.headers}});
+    const response=await fetch('/miniapp-api'+path,{...fetchOptions,method,body,signal:controller.signal,cache:'no-store',headers:{'Content-Type':'application/json','X-Pinggy-No-Screen':'1',...(initData?{Authorization:'tma '+initData}:{}),...fetchOptions.headers}});
     let data;
     try{data=JSON.parse(await response.text());if(data===null||typeof data!=='object')throw new Error();}
     catch{const error=new Error('Сервис соединения вернул другую страницу. Закрой Mini App и открой заново через бота.');error.status=502;throw error;}
@@ -64,12 +67,12 @@ async function bootstrap(){
     if(!initData&&error.status===401){state.demo=true;state.authenticated=false;state.counts={electronic:24,house:24,rap:24};}
     else {showGate(error);return;}
   }
-  $('#mode-label').textContent=state.local?'НА КОМПЬЮТЕРЕ':state.demo?'ДЕМО':'В ТВОЁМ РИТМЕ';
+  $('#mode-label').textContent=state.local?'ЛОКАЛЬНАЯ ВЕРСИЯ':state.demo?'ДЕМО':'ТВОЙ МУЗЫКАЛЬНЫЙ ПУЛ';
   for(const genre of Object.keys(labels))$('#count-'+genre).textContent=(state.demo?'Демо · ':'')+(state.counts[genre]||0)+' треков';
   $('#preview-note').hidden=!(state.local||state.demo);
   if(state.local)$('#preview-note p').textContent='Локальная версия · Реальный каталог из отдельной копии базы. Собирай и сохраняй сеты здесь. Отправка в Telegram отключена.';
   const firstName=state.user.first_name||'DJ';
-  document.querySelectorAll('.profile-name').forEach(el=>{el.replaceChildren(document.createTextNode(firstName));const small=document.createElement('small');small.textContent=state.local?'LOCAL DJ WORKSPACE':'WZDQ COMMUNITY';el.append(small);});
+  document.querySelectorAll('.profile-name').forEach(el=>{el.replaceChildren(document.createTextNode(firstName));const small=document.createElement('small');small.textContent=state.local?'ЛОКАЛЬНАЯ ВЕРСИЯ':'СООБЩЕСТВО WZDQ';el.append(small);});
   document.querySelectorAll('.avatar').forEach(el=>{el.textContent=firstName.slice(0,2).toUpperCase();});
   $('#generate-button').disabled=false;restoreBuilder();updateCounts();navigate(location.hash.slice(1)||'home',false);
 }
@@ -80,7 +83,7 @@ function updateCounts(){
   $('#stat-favorites').textContent=state.sets.filter(row=>row.favorite).length;
   $('#greeting-name').textContent=`Привет, ${state.user.first_name||'DJ'} ✳`;
   const recent=state.sets.slice(0,2);$('#recent-sets').hidden=!recent.length;
-  $('#recent-sets').innerHTML=recent.length?`<div class="section-heading"><h2>Вернуться к музыке</h2><button class="text-button" data-page="sets">Все сеты ${icon('arrow-right')}</button></div><div class="recent-grid">${recent.map(row=>`<button class="recent-card" data-set-id="${escapeHtml(row.id)}"><span class="history-art ${escapeHtml(row.genre)}">${icon('wave')}</span><span><strong>${escapeHtml(genreName(row.genre))} Session</strong><small>${row.tracks.length} треков · ${Math.round(row.total_duration_sec/60)} мин · ${formatDate(row.created_at)}</small></span>${icon('arrow-up-right')}</button>`).join('')}</div>`:'';
+  $('#recent-sets').innerHTML=recent.length?`<div class="section-heading"><h2>Вернуться к музыке</h2><button class="text-button" data-page="sets">Все сеты ${icon('arrow-right')}</button></div><div class="recent-grid">${recent.map(row=>`<button class="recent-card" data-set-id="${escapeHtml(row.id)}"><span class="history-art ${escapeHtml(row.genre)}">${icon('wave')}</span><span><strong>Сет «${escapeHtml(genreName(row.genre))}»</strong><small>${row.tracks.length} треков · ${Math.round(row.total_duration_sec/60)} мин · ${formatDate(row.created_at)}</small></span>${icon('arrow-up-right')}</button>`).join('')}</div>`:'';
 }
 function updateBuilder(){
   $('#builder-summary').textContent=`${labels[state.genre]} · ${state.duration} минут${state.genre==='rap'?' · '+bpmLabels[state.bpm]+' BPM':''}`;
@@ -92,7 +95,7 @@ function restoreBuilder(){
 }
 
 function navigate(page,updateHash=true){
-  if(!['home','pool','youtube','knowledge','sets','favorites','profile','result'].includes(page))page='home';
+  if(!['home','pool','youtube','spotify','knowledge','sets','favorites','profile','result'].includes(page))page='home';
   if(page==='result'&&!state.current)page='home';
   state.page=page;document.body.dataset.page=page;
   document.querySelectorAll('.page').forEach(el=>{el.hidden=el.id!=='page-'+page;});
@@ -102,6 +105,7 @@ function navigate(page,updateHash=true){
   if(page==='profile')renderProfile();
   if(page==='pool')loadPool();
   if(page==='youtube'&&typeof youtubeLoad==='function')youtubeLoad();
+  if(page==='spotify'&&typeof spotifyLoad==='function')spotifyLoad();
   if(page==='knowledge'&&typeof knowledgeLoad==='function')knowledgeLoad();
   if(page!=='knowledge'&&typeof knowledgeStop==='function')knowledgeStop();
   if(page==='result')renderResult();
@@ -113,6 +117,37 @@ function chooseGenre(genre){state.genre=genre;document.querySelectorAll('[data-g
 function setDuration(duration){state.duration=duration;document.querySelectorAll('[data-duration]').forEach(el=>{el.classList.toggle('active',Number(el.dataset.duration)===duration);el.setAttribute('aria-pressed',String(Number(el.dataset.duration)===duration));});updateBuilder();haptic();}
 function setBpm(bpm){state.bpm=bpm;document.querySelectorAll('[data-bpm]').forEach(el=>{el.classList.toggle('active',el.dataset.bpm===bpm);el.setAttribute('aria-pressed',String(el.dataset.bpm===bpm));});updateBuilder();haptic();}
 function formatTime(seconds){return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;}
+function audioButton(track){
+  if(state.demo||!Number.isInteger(Number(track.id)))return '';
+  const title=escapeHtml(track.title||'Без названия'),artist=escapeHtml(track.artist||'Исполнитель не указан');
+  return `<button class="track-play" type="button" data-audio-track="${Number(track.id)}" data-track-title="${title}" data-track-artist="${artist}" aria-label="Прослушать ${title} — ${artist}">${icon('play')}</button>`;
+}
+const audioPlayer={element:$('#mini-audio'),activeId:null,loading:false};
+function updateAudioUi(){
+  const audio=audioPlayer.element;if(!audio)return;
+  const playing=!audio.paused&&!audio.ended;
+  $('#mini-audio-toggle').innerHTML=icon(playing?'pause':'play');$('#mini-audio-toggle').setAttribute('aria-label',playing?'Пауза':'Воспроизвести');
+  document.querySelectorAll('[data-audio-track]').forEach(button=>{const current=String(button.dataset.audioTrack)===String(audioPlayer.activeId);button.innerHTML=icon(current&&playing?'pause':'play');button.classList.toggle('is-playing',current&&playing);});
+  const seek=$('#mini-audio-seek'),duration=Number.isFinite(audio.duration)?audio.duration:0;
+  $('#mini-audio-current').textContent=formatTime(Math.floor(audio.currentTime||0));$('#mini-audio-duration').textContent=formatTime(Math.floor(duration));
+  seek.value=duration?String(Math.round(audio.currentTime/duration*1000)):'0';
+}
+async function playTrack(button){
+  const id=String(button.dataset.audioTrack),audio=audioPlayer.element;
+  if(audioPlayer.loading)return;
+  if(audioPlayer.activeId===id&&audio.src){if(audio.paused){try{await audio.play();}catch{toast('Не удалось воспроизвести трек. Попробуй ещё раз.');}}else audio.pause();updateAudioUi();return;}
+  audioPlayer.loading=true;button.disabled=true;
+  try{
+    const data=await api(`/tracks/${encodeURIComponent(id)}/audio-url`);
+    audioPlayer.activeId=id;$('#mini-audio-title').textContent=button.dataset.trackTitle||'Трек';$('#mini-audio-artist').textContent=button.dataset.trackArtist||'';$('#mini-audio-player').hidden=false;
+    audio.src=new URL(data.url,location.origin).href;audio.load();await audio.play();updateAudioUi();
+  }catch(error){toast(error.message||'Не удалось открыть аудиофайл.');}
+  finally{audioPlayer.loading=false;button.disabled=false;}
+}
+audioPlayer.element.addEventListener('timeupdate',updateAudioUi);audioPlayer.element.addEventListener('loadedmetadata',updateAudioUi);audioPlayer.element.addEventListener('play',updateAudioUi);audioPlayer.element.addEventListener('pause',updateAudioUi);audioPlayer.element.addEventListener('ended',updateAudioUi);audioPlayer.element.addEventListener('error',()=>{audioPlayer.activeId=null;updateAudioUi();if(!$('#mini-audio-player').hidden)toast('Не удалось загрузить аудио. Нажми «Воспроизвести», чтобы попробовать снова.');});
+$('#mini-audio-toggle').addEventListener('click',async()=>{const audio=audioPlayer.element;if(!audio.src)return;if(audio.paused){try{await audio.play();}catch{toast('Не удалось воспроизвести трек.');}}else audio.pause();updateAudioUi();});
+$('#mini-audio-seek').addEventListener('input',event=>{const audio=audioPlayer.element;if(Number.isFinite(audio.duration)&&audio.duration)audio.currentTime=Number(event.target.value)/1000*audio.duration;});
+$('#mini-audio-close').addEventListener('click',()=>{const audio=audioPlayer.element;audio.pause();audio.removeAttribute('src');audio.load();audioPlayer.activeId=null;$('#mini-audio-player').hidden=true;updateAudioUi();});
 function formatDate(value){return value?new Date(value.endsWith('Z')||/[+-]\d\d:\d\d$/.test(value)?value:value+'Z').toLocaleDateString('ru-RU',{day:'numeric',month:'short'}):'Сегодня';}
 function saveCurrent(row){state.current=row;const at=state.sets.findIndex(item=>item.id===row.id);if(at<0)state.sets.unshift(row);else state.sets[at]=row;updateCounts();}
 function demoSet(){
@@ -124,7 +159,7 @@ async function generate(previous=null){
   if(state.loading)return;
   state.loading=true;$('#generate-label').textContent='Собираем…';$('#generate-button').setAttribute('aria-busy','true');$('#generate-button').disabled=true;$('#generate-button').classList.add('loading');
   const body={genre:state.genre,duration:state.duration,bpm_bucket:state.genre==='rap'?state.bpm:null,previous_set_id:previous};
-  toast('Подбираем треки по BPM, тональности и энергии…');haptic();
+  toast('Подбираем треки по темпу, тональности и энергии…');haptic();
   try{
     const row=state.demo?demoSet():await api('/sets',{method:'POST',body:JSON.stringify(body)});
     saveCurrent(row);navigate('result');$('#toast').hidden=true;
@@ -141,21 +176,21 @@ function renderResult(){
   const row=state.current;if(!row)return;
   const total=row.tracks.length;const bpms=row.tracks.map(t=>t.bpm).filter(Number.isFinite);
   const bpmRange=bpms.length?`${Math.round(Math.min(...bpms))}–${Math.round(Math.max(...bpms))} BPM`:'';
-  $('#page-result').innerHTML=`<button class="back-button" data-page="home">${icon('arrow-left')}К новому сету</button><div class="result-top"><div class="result-cover ${escapeHtml(row.genre)}">${icon('wave')}</div><div class="result-info"><p class="eyebrow">${state.demo?'DEMO SELECTION':state.local?'LOCAL SELECTION':'YOUR NEXT SET'} / ${formatDate(row.created_at)}</p><h1>${labels[row.genre]} Session</h1><div class="set-meta">${total} треков · ${Math.round(row.total_duration_sec/60)} мин сета · ${bpmRange}</div></div></div><div class="set-actions">${!state.deliveryEnabled?`<button class="primary" data-action="export">${icon('download')}Скачать треклист</button>`:`<button class="primary" data-action="deliver" ${row.status!=='ready'?'disabled':''}>${icon('send')}${row.status==='ready'?'Получить треки в чат':row.status==='sending'?'Отправляем треки…':row.status==='completed'?'Треки отправлены в чат':'Проверь статус отправки'}</button>`}<button class="secondary ${row.favorite?'saved':''}" data-action="favorite" aria-pressed="${!!row.favorite}">${icon('heart')}${row.favorite?'В избранном':'Сохранить'}</button><button class="secondary" data-action="repeat">${icon('shuffle')}Ещё вариант</button></div>${resultStatus(row)}<div class="mix-note">${state.demo?'Демонстрационные треки. ':''}Тайминг сета: 50% длительности каждого трека. Полная длина аудио — ${Math.round(row.actual_duration_sec/60)} мин.${row.total_duration_sec<row.duration*60?' Для выбранных параметров нашлось меньше совместимых треков.':''}${!state.deliveryEnabled?' Доступен экспорт треклиста. Отправка аудио пока отключена.':''}</div><div class="track-list"><div class="track-row track-head"><span>#</span><span>ТРЕК / ИСПОЛНИТЕЛЬ</span><span>BPM</span><span>KEY</span><span class="track-time">ВРЕМЯ</span></div>${row.tracks.map((track,i)=>`<div class="track-row"><span class="track-number">${String(i+1).padStart(2,'0')}</span><div class="track-name">${escapeHtml(track.title)}<small>${escapeHtml(track.artist||'Unknown artist')}</small></div><span class="track-bpm">${Math.round(track.bpm||0)}</span><span class="key-badge">${escapeHtml(track.camelot_key)}</span><span class="track-time">${formatTime(track.duration_sec||0)}</span></div>`).join('')}</div><footer class="page-footer"><span>CURATED BY YOU · MIXED WITH WZDQ</span><span>${total} TRACKS / ${row.duration} MIN SESSION</span></footer>`;
+  $('#page-result').innerHTML=`<button class="back-button" data-page="home">${icon('arrow-left')}К новому сету</button><div class="result-top"><div class="result-cover ${escapeHtml(row.genre)}">${icon('wave')}</div><div class="result-info"><p class="eyebrow">${state.demo?'ДЕМО-ПОДБОРКА':state.local?'ЛОКАЛЬНАЯ ПОДБОРКА':'ТВОЙ СЛЕДУЮЩИЙ СЕТ'} / ${formatDate(row.created_at)}</p><h1>Сет «${labels[row.genre]}»</h1><div class="set-meta">${total} треков · ${Math.round(row.total_duration_sec/60)} мин сета · ${bpmRange}</div></div></div><div class="set-actions">${!state.deliveryEnabled?`<button class="primary" data-action="export">${icon('download')}Скачать треклист</button>`:`<button class="primary" data-action="deliver" ${row.status!=='ready'?'disabled':''}>${icon('send')}${row.status==='ready'?'Получить треки в чат':row.status==='sending'?'Отправляем треки…':row.status==='completed'?'Треки отправлены в чат':'Проверь статус отправки'}</button>`}<button class="secondary ${row.favorite?'saved':''}" data-action="favorite" aria-pressed="${!!row.favorite}">${icon('heart')}${row.favorite?'В избранном':'Сохранить'}</button><button class="secondary" data-action="repeat">${icon('shuffle')}Ещё вариант</button></div>${resultStatus(row)}<div class="mix-note">${state.demo?'Демонстрационные треки. ':''}Тайминг сета: 50% длительности каждого трека. Полная длина аудио — ${Math.round(row.actual_duration_sec/60)} мин.${row.total_duration_sec<row.duration*60?' Для выбранных параметров нашлось меньше совместимых треков.':''}${!state.deliveryEnabled?' Доступен экспорт треклиста. Отправка аудио пока отключена.':''}</div><div class="track-list"><div class="track-row track-head"><span>#</span><span>ТРЕК / ИСПОЛНИТЕЛЬ</span><span>ТЕМП</span><span>ТОНАЛЬНОСТЬ</span><span class="track-time">ВРЕМЯ</span></div>${row.tracks.map((track,i)=>`<div class="track-row"><span class="track-number">${String(i+1).padStart(2,'0')}</span><div class="track-name">${audioButton(track)}<span class="track-info">${escapeHtml(track.title)}<small>${escapeHtml(track.artist||'Исполнитель не указан')}</small></span></div><span class="track-bpm">${Math.round(track.bpm||0)}</span><span class="key-badge">${escapeHtml(track.camelot_key)}</span><span class="track-time">${formatTime(track.duration_sec||0)}</span></div>`).join('')}</div><footer class="page-footer"><span>СОБРАНО ДЛЯ ТЕБЯ · WZDQ</span><span>${total} ТРЕКОВ · ${row.duration} МИНУТ</span></footer>`;
   if(row.status==='sending'&&!state.poll)schedulePoll(row.id);
 }
 function renderHistory(page){
   const rows=state.sets.filter(row=>page!=='favorites'||row.favorite);
   const favorite=page==='favorites';
-  $('#page-'+page).innerHTML=`<div class="page-heading"><p class="eyebrow">YOUR PERSONAL COLLECTION</p><h1>${favorite?'Только любимое.':'Твои сеты.'}</h1><p>${favorite?'Звук, к которому хочется вернуться.':'Сохраняем каждую подборку. Чтобы твой следующий сет был под рукой.'}</p></div>${!rows.length?`<div class="empty-state">${icon(favorite?'heart':'layers')}<h2>${favorite?'Здесь будет твой любимый звук':'Твоя история ещё впереди'}</h2><p>${favorite?'Нажми «Сохранить» на готовом сете — он появится здесь.':'Выбери свой звук и собери первый сет. Он автоматически появится в коллекции.'}</p><button class="primary" data-page="home">Собрать первый сет ${icon('arrow-right')}</button></div>`:`<div class="history-grid">${rows.map(row=>`<button class="history-card" data-set-id="${escapeHtml(row.id)}"><div class="history-art ${escapeHtml(row.genre)}">${icon('wave')}</div><div><h3>${labels[row.genre]} Session ${row.favorite?'♡':''}</h3><p>${row.tracks.length} треков · ${Math.round(row.total_duration_sec/60)} мин</p><p>${formatDate(row.created_at)}${row.bpm_bucket?' · '+bpmLabels[row.bpm_bucket]:''}</p></div>${icon('arrow-up-right')}</button>`).join('')}</div>`}`;
+  $('#page-'+page).innerHTML=`<div class="page-heading"><p class="eyebrow">ТВОЯ КОЛЛЕКЦИЯ</p><h1>${favorite?'Только любимое.':'Твои сеты.'}</h1><p>${favorite?'Звук, к которому хочется вернуться.':'Сохраняем каждую подборку. Чтобы твой следующий сет был под рукой.'}</p></div>${!rows.length?`<div class="empty-state">${icon(favorite?'heart':'layers')}<h2>${favorite?'Здесь будет твой любимый звук':'Твоя история ещё впереди'}</h2><p>${favorite?'Нажми «Сохранить» на готовом сете — он появится здесь.':'Выбери свой звук и собери первый сет. Он автоматически появится в коллекции.'}</p><button class="primary" data-page="home">Собрать первый сет ${icon('arrow-right')}</button></div>`:`<div class="history-grid">${rows.map(row=>`<button class="history-card" data-set-id="${escapeHtml(row.id)}"><div class="history-art ${escapeHtml(row.genre)}">${icon('wave')}</div><div><h3>Сет «${labels[row.genre]}» ${row.favorite?'♡':''}</h3><p>${row.tracks.length} треков · ${Math.round(row.total_duration_sec/60)} мин</p><p>${formatDate(row.created_at)}${row.bpm_bucket?' · '+bpmLabels[row.bpm_bucket]:''}</p></div>${icon('arrow-up-right')}</button>`).join('')}</div>`}`;
 }
 function renderProfile(){if(typeof profileLoad==='function')profileLoad();}
 
 async function toggleFavorite(){const row=state.current;try{const updated=state.demo?{...row,favorite:!row.favorite}:await api(`/sets/${row.id}/favorite`,{method:'PATCH',body:JSON.stringify({favorite:!row.favorite})});saveCurrent(updated);renderResult();haptic();toast(updated.favorite?'Сет добавлен в избранное':'Сет убран из избранного');}catch(error){toast(error.message);}}
 function exportTracklist(){
   const row=state.current;if(!row)return;
-  const text=`WZDQ POOL — ${labels[row.genre]} Session\n${row.tracks.length} tracks / ${Math.round(row.total_duration_sec/60)} min DJ timing\n\n`+row.tracks.map((t,i)=>`${String(i+1).padStart(2,'0')}. ${t.artist?t.artist+' — ':''}${t.title} | ${Math.round(t.bpm)} BPM | ${t.camelot_key} | ${formatTime(t.duration_sec)}`).join('\n');
-  const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download=`WZDQ-${labels[row.genre]}-${row.duration}min.txt`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Треклист скачан');
+  const text=`WZDQ POOL — Сет «${labels[row.genre]}»\n${row.tracks.length} треков / ${Math.round(row.total_duration_sec/60)} мин DJ-сета\n\n`+row.tracks.map((t,i)=>`${String(i+1).padStart(2,'0')}. ${t.artist?t.artist+' — ':''}${t.title} | ${Math.round(t.bpm)} BPM | ${t.camelot_key} | ${formatTime(t.duration_sec)}`).join('\n');
+  const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download=`WZDQ-${labels[row.genre]}-${row.duration}мин.txt`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Треклист скачан');
 }
 async function deliver(){
   if(!state.current||state.local||state.demo)return;
@@ -165,6 +200,7 @@ async function deliver(){
 function schedulePoll(id){clearTimeout(state.poll);state.poll=setTimeout(async()=>{state.poll=null;try{const row=await api(`/sets/${id}`);const currentId=state.current?.id;const at=state.sets.findIndex(item=>item.id===id);if(at>=0)state.sets[at]=row;if(currentId===id){state.current=row;if(state.page==='result')renderResult();}if(row.status==='sending')schedulePoll(id);else toast(row.status==='completed'?'Все треки доставлены':`Отправка завершена: ${row.sent_count} из ${row.tracks.length}`);}catch(error){toast(error.message);}},2500);}
 document.addEventListener('click',async event=>{
   const button=event.target.closest('button,a');if(!button)return;
+  if(button.dataset.audioTrack){await playTrack(button);return;}
   if(button.matches('a[href="#home"]')){event.preventDefault();navigate('home');return;}
   if(button.dataset.page){navigate(button.dataset.page);haptic();return;}
   if(button.dataset.genre){chooseGenre(button.dataset.genre);return;}
@@ -209,7 +245,7 @@ async function loadPool(offset=0){
     $('#pool-count').textContent=`Найдено треков: ${data.total.toLocaleString('ru-RU')}`;
     $('#pool-page').textContent=data.total?`${offset+1}–${offset+data.tracks.length} из ${data.total}`:'0 треков';
     $('#pool-prev').disabled=offset===0;$('#pool-next').disabled=offset+data.tracks.length>=data.total;
-    $('#pool-results').innerHTML=data.tracks.length?`<div class="track-list"><div class="track-row track-head"><span>#</span><span>ТРЕК / ИСПОЛНИТЕЛЬ</span><span>BPM</span><span>KEY</span><span class="track-time">ВРЕМЯ</span></div>${data.tracks.map((t,i)=>`<div class="track-row"><span class="track-number">${offset+i+1}</span><div class="track-name">${escapeHtml(t.title)}<small>${escapeHtml(t.artist||'Исполнитель не указан')} · ${escapeHtml(genreName(t.genre))}</small></div><span class="track-bpm">${t.bpm?Math.round(t.bpm):'—'}</span><span class="key-badge">${escapeHtml(t.camelot_key||'—')}</span><span class="track-time">${t.duration_sec?formatTime(t.duration_sec):'—'}</span></div>`).join('')}</div>`:'<div class="empty-state"><h2>Треки не найдены</h2><p>Попробуй изменить фильтры или сбросить поиск.</p></div>';
+    $('#pool-results').innerHTML=data.tracks.length?`<div class="track-list"><div class="track-row track-head"><span>#</span><span>ТРЕК / ИСПОЛНИТЕЛЬ</span><span>ТЕМП</span><span>ТОНАЛЬНОСТЬ</span><span class="track-time">ВРЕМЯ</span></div>${data.tracks.map((t,i)=>`<div class="track-row"><span class="track-number">${offset+i+1}</span><div class="track-name">${audioButton(t)}<span class="track-info">${escapeHtml(t.title)}<small>${escapeHtml(t.artist||'Исполнитель не указан')} · ${escapeHtml(genreName(t.genre))}</small></span></div><span class="track-bpm">${t.bpm?Math.round(t.bpm):'—'}</span><span class="key-badge">${escapeHtml(t.camelot_key||'—')}</span><span class="track-time">${t.duration_sec?formatTime(t.duration_sec):'—'}</span></div>`).join('')}</div>`:'<div class="empty-state"><h2>Треки не найдены</h2><p>Попробуй изменить фильтры или сбросить поиск.</p></div>';
   }catch(error){if(requestId!==poolRequest)return;$('#pool-count').textContent='Не удалось загрузить музыку';$('#pool-results').innerHTML=`<div class="empty-state"><h2>Давай ещё раз?</h2><p>${escapeHtml(error.message)}</p><button class="primary" data-action="pool-retry">Повторить загрузку</button></div>`;$('#pool-page').textContent='';}
   finally{if(requestId===poolRequest)$('#pool-results').removeAttribute('aria-busy');}
 }
@@ -221,5 +257,5 @@ document.addEventListener('pointerdown',event=>{const button=event.target.closes
 window.addEventListener('popstate',()=>navigate(location.hash.slice(1),false));
 window.addEventListener('online',()=>{if($('#access-gate').hidden===false)bootstrap();});
 hydrateIcons();$('#year').textContent=new Date().getFullYear();
-try{telegram?.ready();telegram?.expand();telegram?.setHeaderColor('#120e17');telegram?.setBackgroundColor('#120e17');telegram?.BackButton?.onClick(()=>navigate('home'));}catch{}
+try{telegram?.ready();telegram?.expand();telegram?.setHeaderColor('#09090b');telegram?.setBackgroundColor('#09090b');telegram?.BackButton?.onClick(()=>navigate('home'));}catch{}
 bootstrap();

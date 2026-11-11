@@ -15,6 +15,8 @@ from api.miniapp import router as miniapp_router
 from api.miniapp_youtube import router as youtube_router, cleanup_audio
 from api.miniapp_profile import router as profile_router
 from api.miniapp_knowledge import router as knowledge_router
+from api.miniapp_audio import router as audio_router
+from api.miniapp_spotify import router as spotify_router
 from config.settings import get_settings
 
 from database.db import SessionLocal, close_db, init_db
@@ -35,6 +37,10 @@ async def lifespan(app: FastAPI):
     app.state.youtube_tasks = {}
     app.state.youtube_lock = asyncio.Lock()
     app.state.youtube_limits = {}
+    app.state.spotify_delivery_jobs = {}
+    app.state.spotify_delivery_active = {}
+    app.state.spotify_delivery_tasks = set()
+    app.state.spotify_delivery_slots = asyncio.Semaphore(2)
     async with SessionLocal() as session:
         await session.execute(update(MiniAppSet).where(MiniAppSet.status == "sending").values(status="interrupted"))
         await session.execute(update(MiniAppYouTubeJob).where(MiniAppYouTubeJob.status == "running").values(
@@ -45,6 +51,7 @@ async def lifespan(app: FastAPI):
     finally:
         tasks = [item["task"] for item in list(app.state.deliveries.values())]
         tasks += [item["task"] for item in list(app.state.youtube_tasks.values())]
+        tasks += list(app.state.spotify_delivery_tasks)
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -58,6 +65,8 @@ def create_app() -> FastAPI:
     app.include_router(youtube_router)
     app.include_router(profile_router)
     app.include_router(knowledge_router)
+    app.include_router(audio_router)
+    app.include_router(spotify_router)
     web_root = Path(__file__).resolve().parents[1] / "web"
     app.mount("/app/static", StaticFiles(directory=web_root), name="miniapp-static")
 

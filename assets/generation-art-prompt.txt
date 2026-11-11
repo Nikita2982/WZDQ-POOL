@@ -1,0 +1,4 @@
+Mode: built-in image_gen, edit.
+Input: web/images/pool-background.jpg
+Replace only the bottom rounded label "special edits" with "generation ⚙️" in bold black letters and a black gear. Preserve WZDQ'S POOL, the smiling disco-ball character, turntables, orange and pink rays, texture, composition, colors and black margins.
+Output usage: illustration to the right of the generation heading; preserve the original shared background.
